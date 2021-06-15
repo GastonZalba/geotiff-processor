@@ -1,3 +1,4 @@
 .venv
 input/*
-output/*
+output/storage*
+output/geoserver*
