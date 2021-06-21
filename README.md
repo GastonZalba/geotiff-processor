@@ -11,8 +11,5 @@ El script crea los siguientes archivos optimizados:
 
 ## Uso
 - Colocar archivos .tif a convertir en la carpeta input
-- De ser necesario, modificar archivo `params.py` según formatos de exportación y carpetas.
+- De ser necesario, modificar archivo `params.py` según formatos de exportación, metadata y carpetas.
 - Ejecutar `python process.py` para iniciar conversión
-
-## @TODO
-- Arreglar bug de GDAL al usar máscaras internas junto con Warp

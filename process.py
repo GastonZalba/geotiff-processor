@@ -18,6 +18,7 @@ class ConvertGeotiff:
     https://docs.geoserver.geo-solutions.it/edu/en/raster_data/advanced_gdal/example5.html
     https://gdal.org/tutorials/raster_api_tut.html
     https://gdal.org/python/osgeo.gdal-module.html
+    https://gdal.org/api/python.html
     '''
 
     def __init__(self):
@@ -49,7 +50,7 @@ class ConvertGeotiff:
 
                 if filepath.endswith(".tif"):
                     try:
-                        file_ds = gdal.Open(filepath)
+                        file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
                     except RuntimeError as e:
                         print('Unable to open {}'.format(filepath))
                         print(e)
@@ -65,15 +66,19 @@ class ConvertGeotiff:
                     srs = osr.SpatialReference(wkt=prj)
                     self.epsg = int(srs.GetAttrValue('AUTHORITY', 1))
 
+                    self.metadata = params.metadata
+
+                    # filename must be an unique identifier
+                    # self.metadata.append('TIFF_RSID={}'.format(file)) # File Universal Unique Identifier
+
                     print('Exporting storage files...')
-                    geotiff = self.exportStorageFiles(filepath, file)
+                    self.exportStorageFiles(file_ds, file)
 
                     print('Exporting geoserver files...')                    
                     # use already processed geotiff
-                    self.exportGeoserverFiles(geotiff, file)
+                    self.exportGeoserverFiles(file_ds, file)
 
                     # Once we're done, close properly the dataset
-                    geotiff = None
                     file_ds = None
 
     def exportGeoserverFiles(self, filepath, file):
@@ -94,6 +99,7 @@ class ConvertGeotiff:
             tmpWarp = tempfile.gettempdir() + file[0] + '.tif'
             print('Converting EPSG:{} to EPSG:{}'.format(
                 self.epsg, params.geoserver['epsg']))
+            # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
             ds = gdal.Warp(tmpWarp, filepath, **kwargs)
 
         gdaloutput = params.geoserver['output_folder'] + '/' + \
@@ -102,11 +108,12 @@ class ConvertGeotiff:
 
         kwargs = {
             'format': 'GTiff',
-            # 'bandList': [1, 2, 3],
-            'maskBand': 'mask',
+            'bandList': [1, 2, 3],
+            'maskBand': 4,
             'xRes': params.geoserver['gsd']/100,
             'yRes': params.geoserver['gsd']/100,
-            'creationOptions': params.geoserver['creationOptions']
+            'creationOptions': params.geoserver['creationOptions'],
+            'metadataOptions': self.metadata
         }
 
         fileToConvert = ds if tmpWarp else filepath
@@ -143,7 +150,8 @@ class ConvertGeotiff:
             'format': 'GTiff',
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
-            'creationOptions': params.storage['creationOptions']
+            'creationOptions': params.storage['creationOptions'],
+            'metadataOptions': self.metadata
         }
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
@@ -160,7 +168,8 @@ class ConvertGeotiff:
             'format': 'GTiff',
             'xRes': params.storagePreview['gsd']/100,
             'yRes': params.storagePreview['gsd']/100,
-            'creationOptions': params.storagePreview['creationOptions']
+            'creationOptions': params.storagePreview['creationOptions'],
+            'metadataOptions': self.metadata
         }
 
         gdal.Translate(gdaloutput, geotiff, **kwargs)

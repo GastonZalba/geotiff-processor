@@ -1,6 +1,11 @@
 # original tif files
 input_folder = 'input'
 
+# https://gdal.org/drivers/raster/gtiff.html#metadata
+metadata = [
+    'TIFFTAG_ARTIST=Dirección Provincial de Hidráulica, Provincia de Buenos Aires'
+]
+
 geoserver = {
     'epsg': 3857,
     'output_folder': 'output/geoserver',
