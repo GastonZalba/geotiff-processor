@@ -26,7 +26,7 @@ geoserver = {
 storage = {
     'output_folder': 'output/storage',
     'gsd': None,  # None to use original | cm
-    'overviews': False,
+    'overviews': True,
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=IF_NEEDED',
@@ -39,9 +39,9 @@ storage = {
 
 storagePreview = {
     'output_folder': 'output/storage/previews',
-    'width': 600, #px
+    'width': 650, #px
     'creationOptions': [
-        'JPEG_QUALITY=60',
+        'JPEG_QUALITY=75',
         'TFW=NO',
         'TILED=NO',
         'PHOTOMETRIC=YCBCR',
