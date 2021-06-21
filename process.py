@@ -69,7 +69,7 @@ class ConvertGeotiff:
                     self.metadata = params.metadata
 
                     # filename must be an unique identifier
-                    # self.metadata.append('TIFF_RSID={}'.format(file)) # File Universal Unique Identifier
+                    self.metadata.append('registroId={}'.format(os.path.splitext(file)[0])) # Unique Identifier
 
                     print('Exporting storage files...')
                     self.exportStorageFiles(file_ds, file)
@@ -96,7 +96,7 @@ class ConvertGeotiff:
 
         # if file has diferent epsg
         if (self.epsg != params.geoserver['epsg']):
-            tmpWarp = tempfile.gettempdir() + file[0] + '.tif'
+            tmpWarp = tempfile.gettempdir() + file
             print('Converting EPSG:{} to EPSG:{}'.format(
                 self.epsg, params.geoserver['epsg']))
             # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
@@ -166,8 +166,7 @@ class ConvertGeotiff:
 
         kwargs = {
             'format': 'GTiff',
-            'xRes': params.storagePreview['gsd']/100,
-            'yRes': params.storagePreview['gsd']/100,
+            'width': params.storagePreview['width'], #px
             'creationOptions': params.storagePreview['creationOptions'],
             'metadataOptions': self.metadata
         }
