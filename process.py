@@ -1,21 +1,24 @@
 import sys
 import os
+import tempfile
+from pathlib import Path
+
+import params as params
 
 try:
-    # https://pcjericks.github.io/py-gdalogr-cookbook/
-    # https://docs.geoserver.geo-solutions.it/edu/en/raster_data/advanced_gdal/example5.html
-    # https://gdal.org/tutorials/raster_api_tut.html
-    # https://gdal.org/python/osgeo.gdal-module.html#WarpOptions
     from osgeo import gdal, osr
 except:
-    sys.exit('ERROR: no se encontró el módulo GDAL')
-
-
-INPUT_FOLDER = 'input'
-EPSG_OUTPUT = '3857'
+    sys.exit('ERROR: osgeo module was not found')
 
 
 class ConvertGeotiff:
+    '''
+    Some docs:
+    https://pcjericks.github.io/py-gdalogr-cookbook/
+    https://docs.geoserver.geo-solutions.it/edu/en/raster_data/advanced_gdal/example5.html
+    https://gdal.org/tutorials/raster_api_tut.html
+    https://gdal.org/python/osgeo.gdal-module.html
+    '''
 
     def __init__(self):
         version_num = int(gdal.VersionInfo('VERSION_NUM'))
@@ -25,13 +28,22 @@ class ConvertGeotiff:
         gdal.UseExceptions()
 
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
+        
+        self.checkDirectories()
+        self.processTifs()
 
-        self.openFolder()
+    def checkDirectories(self):
+        '''
+        Create folders if no exists
+        '''
+        Path(params.geoserver['output_folder']).mkdir(parents=True, exist_ok=True)
+        Path(params.storage['output_folder']).mkdir(parents=True, exist_ok=True)
+        Path(params.storagePreview['output_folder']).mkdir(parents=True, exist_ok=True)
 
-    def openFolder(self):
+    def processTifs(self):
 
-        # buscamos todos los archivos con extensión "tif" dentro de la carpeta
-        for subdir, dirs, files in os.walk(INPUT_FOLDER):
+        # Find all .tif extensions
+        for subdir, dirs, files in os.walk(params.input_folder):
             for file in files:
                 filepath = subdir + os.sep + file
 
@@ -43,79 +55,85 @@ class ConvertGeotiff:
                         print(e)
                         sys.exit(1)
 
-                    # GSD
+                    # File GSD
                     gt = file_ds.GetGeoTransform()
                     self.pixelSizeX = gt[1]
                     self.pixelSizeY = -gt[5]
 
-                    # Projection
+                    # File Projection
                     prj = file_ds.GetProjection()
                     srs = osr.SpatialReference(wkt=prj)
                     self.epsg = int(srs.GetAttrValue('AUTHORITY', 1))
 
+                    print('Exporting storage files...')
                     geotiff = self.exportStorageFiles(filepath, file)
 
-                    # usamos el geotiff ya exportado para no volver a abrir el archivo original que e smuy pesado
-                    self.exportGeoserverGeotiff(geotiff, file)
+                    print('Exporting geoserver files...')                    
+                    # use already processed geotiff
+                    self.exportGeoserverFiles(geotiff, file)
 
                     # Once we're done, close properly the dataset
                     geotiff = None
                     file_ds = None
 
-    def exportGeoserverGeotiff(self, filepath, file):
+    def exportGeoserverFiles(self, filepath, file):
 
-        GEOSERVER_GSD_OUTPUT = 20  # cm
-        COMPRESSION_OUTPUT = 'JPEG'
-        OUTPUT_FOLDER = 'output/geoserver'
-        QUALITY = 80
+        tmpWarp = None
 
-        gdaloutput = OUTPUT_FOLDER + '/' + \
-            os.path.splitext(
-                file)[0] + '_EPSG-{}_GSD-{}.tif'.format(EPSG_OUTPUT, GEOSERVER_GSD_OUTPUT)
-        
-        print('Exporting {}'.format(gdaloutput))
+        print('Converting {}...'.format(file))
 
         kwargs = {
             'format': 'GTiff',
-            #'bandList': [1, 2, 3],
-            #'maskBand': 4,
-            'xRes': GEOSERVER_GSD_OUTPUT/100,
-            'yRes': GEOSERVER_GSD_OUTPUT/100,
-            'creationOptions': [
-                'BIGTIFF=IF_NEEDED',
-                'TILED=YES',
-                'PHOTOMETRIC=YCBCR',
-                'JPEG_QUALITY={}'.format(QUALITY),
-                'COMPRESS={}'.format(COMPRESSION_OUTPUT)
-            ]
+            'xRes': params.geoserver['gsd']/100,
+            'yRes': params.geoserver['gsd']/100,
+            'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg'])
         }
-        
-        if (self.epsg != 3857):
-            print('Converting EPSG:{} to EPSG:{}'.format(self.epsg, EPSG_OUTPUT))
-            gdal.Warp(gdaloutput, filepath, dstSRS='EPSG:{}'.format(EPSG_OUTPUT), **kwargs)            
-        
-        ds = gdal.Translate(gdaloutput, filepath, **kwargs)
-        
-        self.createOverviews(ds)
+
+        # if file has diferent epsg
+        if (self.epsg != params.geoserver['epsg']):
+            tmpWarp = tempfile.gettempdir() + file[0] + '.tif'
+            print('Converting EPSG:{} to EPSG:{}'.format(
+                self.epsg, params.geoserver['epsg']))
+            ds = gdal.Warp(tmpWarp, filepath, **kwargs)
+
+        gdaloutput = params.geoserver['output_folder'] + '/' + \
+            os.path.splitext(
+                file)[0] + '_EPSG-{}_GSD-{}.tif'.format(params.geoserver['epsg'], params.geoserver['gsd'])
+
+        kwargs = {
+            'format': 'GTiff',
+            # 'bandList': [1, 2, 3],
+            'maskBand': 'mask',
+            'xRes': params.geoserver['gsd']/100,
+            'yRes': params.geoserver['gsd']/100,
+            'creationOptions': params.geoserver['creationOptions']
+        }
+
+        fileToConvert = ds if tmpWarp else filepath
+        ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
+
+        if (params.geoserver['overviews']):
+            self.createOverviews(ds)
+
         ds = None
 
-     
+        # Delete tmp files
+        if tmpWarp:
+            del tmpWarp
+
     def exportStorageFiles(self, filepath, file):
-
-        COMPRESSION_OUTPUT = 'JPEG'
-        OUTPUT_FOLDER = 'output/storage'
-
-        # GSD original del archivo: sacamos promedio del valor x e y
-        STORAGE_GSD_OUTPUT = round(
+        '''
+        Export high and low res files
+        '''
+        # file's GSD: get average x and y values
+        storage_gsd = round(
             (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
 
-        STORAGE_QUALITY = 80
-
         gdaloutput = os.path.splitext(
-            file)[0] + '_EPSG-{}_GSD-{}.tif'.format(self.epsg, STORAGE_GSD_OUTPUT)
+            file)[0] + '_EPSG-{}_GSD-{}.tif'.format(self.epsg, storage_gsd)
 
-        gdaloutput = OUTPUT_FOLDER + '/' + gdaloutput
-        
+        gdaloutput = params.storage['output_folder'] + '/' + gdaloutput
+
         print('Exporting {}'.format(gdaloutput))
 
         kwargs = {
@@ -123,42 +141,31 @@ class ConvertGeotiff:
             'bandList': [1, 2, 3],
             'maskBand': 4,
             'format': 'GTiff',
-            'xRes': self.pixelSizeX,
-            'yRes': self.pixelSizeY,
-            'creationOptions': [
-                'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
-                'TFW=YES',
-                'JPEG_QUALITY={}'.format(STORAGE_QUALITY),
-                'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
-                'PHOTOMETRIC=YCBCR',  # switches the photometric interpretation to the yCbCr color space, which allows a significant further reduction in output size with minimal changes on the images
-                'COMPRESS={}'.format(COMPRESSION_OUTPUT)
-            ]
+            'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
+            'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
+            'creationOptions': params.storage['creationOptions']
         }
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
-        PREVIEW_GSD_OUTPUT = 80  # cm
-        PREVIEW_QUALITY = 80
+        if (params.storage['overviews']):
+            self.createOverviews(geotiff)
 
-        gdaloutput = OUTPUT_FOLDER + '/' + os.path.splitext(file)[0] + '_preview.tif'
+        gdaloutput = params.storagePreview['output_folder'] + '/' + \
+            os.path.splitext(file)[0] + '_preview.tif'
 
         print('Exporting {}'.format(gdaloutput))
 
         kwargs = {
             'format': 'GTiff',
-            'xRes': PREVIEW_GSD_OUTPUT/100,
-            'yRes': PREVIEW_GSD_OUTPUT/100,
-            'creationOptions': [
-                'JPEG_QUALITY={}'.format(PREVIEW_QUALITY),
-                'PHOTOMETRIC=YCBCR',  # switches the photometric interpretation to the yCbCr color space, which allows a significant further reduction in output size with minimal changes on the images
-                'COMPRESS={}'.format(COMPRESSION_OUTPUT)
-            ]
+            'xRes': params.storagePreview['gsd']/100,
+            'yRes': params.storagePreview['gsd']/100,
+            'creationOptions': params.storagePreview['creationOptions']
         }
 
         gdal.Translate(gdaloutput, geotiff, **kwargs)
 
         return geotiff
-
 
     def createOverviews(self, ds):
         '''
@@ -166,5 +173,6 @@ class ConvertGeotiff:
         By default, overviews take the same compression type and transparency masks of the input dataset
         '''
         ds.BuildOverviews("AVERAGE", [2, 4, 8, 16, 32, 64, 128, 256])
+
 
 ConvertGeotiff()

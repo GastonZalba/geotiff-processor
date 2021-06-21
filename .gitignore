@@ -2,3 +2,4 @@
 input/*
 output/storage/*
 output/geoserver/*
+__pycache__
