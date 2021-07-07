@@ -6,7 +6,7 @@ from pathlib import Path
 import params as params
 
 try:
-    from osgeo import gdal, osr
+    from osgeo import gdal, osr, ogr
 except:
     sys.exit('ERROR: osgeo module was not found')
 
@@ -81,7 +81,7 @@ class ConvertGeotiff:
                     # Once we're done, close properly the dataset
                     file_ds = None
 
-    def exportGeoserverFiles(self, filepath, file):
+    def exportGeoserverFiles(self, file_ds, file):
 
         tmpWarp = None
 
@@ -100,7 +100,7 @@ class ConvertGeotiff:
             print('Converting EPSG:{} to EPSG:{}'.format(
                 self.epsg, params.geoserver['epsg']))
             # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
-            ds = gdal.Warp(tmpWarp, filepath, **kwargs)
+            ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
         gdaloutput = params.geoserver['output_folder'] + '/' + \
             os.path.splitext(
@@ -116,7 +116,11 @@ class ConvertGeotiff:
             'metadataOptions': self.metadata
         }
 
-        fileToConvert = ds if tmpWarp else filepath
+        fileToConvert = ds if tmpWarp else file_ds
+        
+        if (params.geoserver['outline']):
+            self.exportOutline(fileToConvert, file)
+
         ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
 
         if (params.geoserver['overviews']):
@@ -174,6 +178,35 @@ class ConvertGeotiff:
         gdal.Translate(gdaloutput, geotiff, **kwargs)
 
         return geotiff
+
+    def exportOutline(self, file_ds, file):
+        gdaloutput = os.path.splitext(
+            file)[0] + '_outline_EPSG-{}.geojson'.format(self.epsg)
+
+        gdaloutput = params.geoserver['output_folder'] + '/' + gdaloutput
+
+        driver = ogr.GetDriverByName("GeoJSON")
+
+        if os.path.exists(gdaloutput):
+            driver.DeleteDataSource(gdaloutput)
+
+        outDatasource = driver.CreateDataSource(gdaloutput)
+        dest_srs = osr.SpatialReference()
+        dest_srs.ImportFromEPSG(params.geoserver['epsg'])
+        outLayer = outDatasource.CreateLayer("outline", srs=dest_srs)
+        
+        maskBand = file_ds.GetRasterBand(4)
+
+        gdal.Polygonize( maskBand, maskBand, outLayer, -1, [], callback=None )
+
+        # shp = ogr.Open(gdaloutput, 0)
+        # lyr = shp.GetLayer()
+        # feat = lyr.GetFeature(0)
+        # geom = feat.geometry()
+        # simple = geom.Simplify(2.0)
+
+        outDatasource = None
+        
 
     def createOverviews(self, ds):
         '''

@@ -12,6 +12,7 @@ geoserver = {
     'output_folder': 'output/geoserver',
     'gsd': 20,  # cm
     'overviews': True,
+    'outline': True,
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
