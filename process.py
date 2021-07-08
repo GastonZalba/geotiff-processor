@@ -2,6 +2,7 @@ import sys
 import os
 import tempfile
 from pathlib import Path
+from datetime import datetime
 
 import params as params
 
@@ -29,7 +30,7 @@ class ConvertGeotiff:
         gdal.UseExceptions()
 
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
-        
+
         self.checkDirectories()
         self.processTifs()
 
@@ -37,9 +38,12 @@ class ConvertGeotiff:
         '''
         Create folders if no exists
         '''
-        Path(params.geoserver['output_folder']).mkdir(parents=True, exist_ok=True)
-        Path(params.storage['output_folder']).mkdir(parents=True, exist_ok=True)
-        Path(params.storagePreview['output_folder']).mkdir(parents=True, exist_ok=True)
+        Path(params.geoserver['output_folder']).mkdir(
+            parents=True, exist_ok=True)
+        Path(params.storage['output_folder']).mkdir(
+            parents=True, exist_ok=True)
+        Path(params.storagePreview['output_folder']).mkdir(
+            parents=True, exist_ok=True)
 
     def processTifs(self):
 
@@ -61,20 +65,28 @@ class ConvertGeotiff:
                     self.pixelSizeX = gt[1]
                     self.pixelSizeY = -gt[5]
 
+                    # file's GSD: get average x and y values
+                    self.original_gsd = round(
+                        (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
+
                     # File Projection
                     prj = file_ds.GetProjection()
                     srs = osr.SpatialReference(wkt=prj)
                     self.epsg = int(srs.GetAttrValue('AUTHORITY', 1))
 
-                    self.metadata = params.metadata
+                    # Drone Deploy date
+                    self.date = file_ds.GetMetadataItem("acquisitionStartDate")
+
+                    self.extra_metadata = params.metadata
 
                     # filename must be an unique identifier
-                    self.metadata.append('registroId={}'.format(os.path.splitext(file)[0])) # Unique Identifier
+                    self.extra_metadata.append('registroId={}'.format(
+                        os.path.splitext(file)[0]))  # Unique Identifier
 
                     print('Exporting storage files...')
-                    self.exportStorageFiles(file_ds, file)
+                    #self.exportStorageFiles(file_ds, file)
 
-                    print('Exporting geoserver files...')                    
+                    print('Exporting geoserver files...')
                     # use already processed geotiff
                     self.exportGeoserverFiles(file_ds, file)
 
@@ -94,39 +106,41 @@ class ConvertGeotiff:
             'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg'])
         }
 
+        ds = None
+
         # if file has diferent epsg
-        if (self.epsg != params.geoserver['epsg']):
-            tmpWarp = tempfile.gettempdir() + file
-            print('Converting EPSG:{} to EPSG:{}'.format(
-                self.epsg, params.geoserver['epsg']))
-            # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
-            ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
+        # if (self.epsg != params.geoserver['epsg']):
+        #     tmpWarp = tempfile.gettempdir() + "\\" + file
+        #     print('Converting EPSG:{} to EPSG:{}'.format(
+        #         self.epsg, params.geoserver['epsg']))
+        #     # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
+        #     ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
-        gdaloutput = params.geoserver['output_folder'] + '/' + \
-            os.path.splitext(
-                file)[0] + '_EPSG-{}_GSD-{}.tif'.format(params.geoserver['epsg'], params.geoserver['gsd'])
+        # gdaloutput = params.geoserver['output_folder'] + '/' + \
+        #     os.path.splitext(
+        #         file)[0] + '_EPSG-{}_GSD-{}.tif'.format(params.geoserver['epsg'], params.geoserver['gsd'])
 
-        kwargs = {
-            'format': 'GTiff',
-            'bandList': [1, 2, 3],
-            'maskBand': 4,
-            'xRes': params.geoserver['gsd']/100,
-            'yRes': params.geoserver['gsd']/100,
-            'creationOptions': params.geoserver['creationOptions'],
-            'metadataOptions': self.metadata
-        }
+        # kwargs = {
+        #     'format': 'GTiff',
+        #     'bandList': [1, 2, 3],
+        #     'maskBand': 4,
+        #     'xRes': params.geoserver['gsd']/100,
+        #     'yRes': params.geoserver['gsd']/100,
+        #     'creationOptions': params.geoserver['creationOptions'],
+        #     'metadataOptions': self.metadata
+        # }
 
         fileToConvert = ds if tmpWarp else file_ds
-        
+
         if (params.geoserver['outline']):
             self.exportOutline(fileToConvert, file)
 
-        ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
+       # ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
 
-        if (params.geoserver['overviews']):
-            self.createOverviews(ds)
+        # if (params.geoserver['overviews']):
+        #     self.createOverviews(ds)
 
-        ds = None
+        # ds = None
 
         # Delete tmp files
         if tmpWarp:
@@ -136,12 +150,9 @@ class ConvertGeotiff:
         '''
         Export high and low res files
         '''
-        # file's GSD: get average x and y values
-        storage_gsd = round(
-            (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
 
         gdaloutput = os.path.splitext(
-            file)[0] + '_EPSG-{}_GSD-{}.tif'.format(self.epsg, storage_gsd)
+            file)[0] + '_EPSG-{}_GSD-{}.tif'.format(self.epsg, self.original_gsd)
 
         gdaloutput = params.storage['output_folder'] + '/' + gdaloutput
 
@@ -155,7 +166,7 @@ class ConvertGeotiff:
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
             'creationOptions': params.storage['creationOptions'],
-            'metadataOptions': self.metadata
+            'metadataOptions': self.extra_metadata
         }
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
@@ -170,9 +181,9 @@ class ConvertGeotiff:
 
         kwargs = {
             'format': 'GTiff',
-            'width': params.storagePreview['width'], #px
+            'width': params.storagePreview['width'],  # px
             'creationOptions': params.storagePreview['creationOptions'],
-            'metadataOptions': self.metadata
+            'metadataOptions': self.extra_metadata
         }
 
         gdal.Translate(gdaloutput, geotiff, **kwargs)
@@ -180,33 +191,89 @@ class ConvertGeotiff:
         return geotiff
 
     def exportOutline(self, file_ds, file):
-        gdaloutput = os.path.splitext(
-            file)[0] + '_outline_EPSG-{}.geojson'.format(self.epsg)
 
-        gdaloutput = params.geoserver['output_folder'] + '/' + gdaloutput
+        geoDriver = ogr.GetDriverByName("GeoJSON")
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(self.epsg)
 
-        driver = ogr.GetDriverByName("GeoJSON")
+        # # Creamos archivo temporario con contonro
+        tmpGdaloutput = tempfile.gettempdir() + "\\" + os.path.splitext(
+             file)[0] + '.geojson'
 
-        if os.path.exists(gdaloutput):
-            driver.DeleteDataSource(gdaloutput)
+        tmpOutDatasource = geoDriver.CreateDataSource(tmpGdaloutput)
 
-        outDatasource = driver.CreateDataSource(gdaloutput)
-        dest_srs = osr.SpatialReference()
-        dest_srs.ImportFromEPSG(params.geoserver['epsg'])
-        outLayer = outDatasource.CreateLayer("outline", srs=dest_srs)
-        
+        outLayer = tmpOutDatasource.CreateLayer("outline", srs=srs)
+
         maskBand = file_ds.GetRasterBand(4)
 
-        gdal.Polygonize( maskBand, maskBand, outLayer, -1, [], callback=None )
+        gdal.Polygonize(maskBand, maskBand, outLayer, -1, [], callback=None)
 
-        # shp = ogr.Open(gdaloutput, 0)
-        # lyr = shp.GetLayer()
-        # feat = lyr.GetFeature(0)
-        # geom = feat.geometry()
-        # simple = geom.Simplify(2.0)
+        tmpOutDatasource = None
 
-        outDatasource = None
+        # Creamos archivo final a partir del temporario
+        gdaloutput = os.path.splitext(
+            file)[0] + '_outline_EPSG-{}.geojson'.format(params.geoserver['epsg'])
+
+        gdaloutput = params.geoserver['output_folder'] + '/' + gdaloutput
         
+        print('Exporting outline {}'.format(gdaloutput))
+
+        if os.path.exists(gdaloutput):
+            geoDriver.DeleteDataSource(gdaloutput)
+
+        outDatasource = geoDriver.CreateDataSource(gdaloutput)
+
+        # create one layer
+        layer = outDatasource.CreateLayer("outline", srs, ogr.wkbPolygon)
+
+        shp = ogr.Open(tmpGdaloutput, 0)
+        tmp_layer = shp.GetLayer()
+        
+        bigger = 0
+        biggerGeom = 0
+
+        # Sólo conservamos el polígono más grande
+        for feature in tmp_layer:
+            geom = feature.geometry()
+            area = geom.GetArea()
+            if (area > bigger):
+                bigger = area
+                biggerGeom = geom
+        
+
+        # Simplificamos la geometría para que no tenga tanto detalle y pese menos
+        simplifyGeom = biggerGeom.Simplify(params.geoserver['outlineSimplify'])
+
+        featureDefn = layer.GetLayerDefn()
+
+        featureDefn.AddFieldDefn(ogr.FieldDefn("gsd", ogr.OFTReal))
+        featureDefn.AddFieldDefn(ogr.FieldDefn("srs", ogr.OFTString))
+        featureDefn.AddFieldDefn(ogr.FieldDefn("registroid", ogr.OFTInteger64))
+
+        if self.date:
+            featureDefn.AddFieldDefn(ogr.FieldDefn("date", ogr.OFTDate))
+
+        # Create the feature and set values
+        feature = ogr.Feature(featureDefn)
+        feature.SetGeometry(simplifyGeom)
+
+        feature.SetField("gsd", self.original_gsd)
+        feature.SetField("srs", 'EPSG:{}'.format(self.epsg))
+        feature.SetField('registroid', os.path.splitext(file)[0])
+
+        if self.date:
+            date = datetime.strptime(self.date, "%Y/%m/%d%H:%M:%S")
+            dateFormated = '{}-{}-{}'.format(date.strftime("%Y"), date.strftime("%m"), date.strftime("%d"))
+            print(dateFormated)
+            feature.SetField("date", dateFormated)
+
+        layer.CreateFeature(feature)
+
+        feature = None
+        outDatasource = None
+
+        # Eliminamos geojson temporario
+        del tmpGdaloutput
 
     def createOverviews(self, ds):
         '''

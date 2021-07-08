@@ -6,13 +6,13 @@ metadata = [
     'TIFFTAG_ARTIST=Dirección Provincial de Hidráulica, Provincia de Buenos Aires'
 ]
 
-
 geoserver = {
     'epsg': 3857,
     'output_folder': 'output/geoserver',
     'gsd': 20,  # cm
     'overviews': True,
     'outline': True,
+    'outlineSimplify': 0.01325,
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
