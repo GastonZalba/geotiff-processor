@@ -196,9 +196,12 @@ class ConvertGeotiff:
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(self.epsg)
 
-        # # Creamos archivo temporario con contonro
+        # Creamos archivo temporario con contonro
         tmpGdaloutput = tempfile.gettempdir() + "\\" + os.path.splitext(
              file)[0] + '.geojson'
+
+        if os.path.exists(tmpGdaloutput):
+            geoDriver.DeleteDataSource(tmpGdaloutput)
 
         tmpOutDatasource = geoDriver.CreateDataSource(tmpGdaloutput)
 
@@ -210,7 +213,7 @@ class ConvertGeotiff:
 
         tmpOutDatasource = None
 
-        # Creamos archivo final a partir del temporario
+        # # Creamos archivo final a partir del temporario
         gdaloutput = os.path.splitext(
             file)[0] + '_outline_EPSG-{}.geojson'.format(params.geoserver['epsg'])
 
@@ -238,9 +241,11 @@ class ConvertGeotiff:
             area = geom.GetArea()
             if (area > bigger):
                 bigger = area
-                biggerGeom = geom
+                biggerGeom = geom.Clone() # Clonamos para prevenir extraños bugs
         
-
+        tmp_layer = None
+        geom = None
+        
         # Simplificamos la geometría para que no tenga tanto detalle y pese menos
         simplifyGeom = biggerGeom.Simplify(params.geoserver['outlineSimplify'])
 
@@ -273,7 +278,7 @@ class ConvertGeotiff:
         outDatasource = None
 
         # Eliminamos geojson temporario
-        del tmpGdaloutput
+        #del tmpGdaloutput
 
     def createOverviews(self, ds):
         '''
