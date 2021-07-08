@@ -4,6 +4,7 @@ Script en Python para procesar ortomosaicos/geotifs para poderlos subir al geose
 El script crea los siguientes archivos optimizados:
 - para subir al geoserver
     - .tif en calidad intermedia (con overviews en diferentes escalas)
+    - .geojson con el contorno de la imagen para subir al wms, con los campos gsd, srs, registroid y date (si existe)
 - para subir a la nube:
     - .tif en calidad baja para usar como preview (GSD 80cm)
     - .tif en calidad media/alta para ser alojado en la nube
