@@ -87,7 +87,6 @@ class ConvertGeotiff:
                     self.exportStorageFiles(file_ds, file)
 
                     print('Exporting geoserver files...')
-                    # use already processed geotiff
                     self.exportGeoserverFiles(file_ds, file)
 
                     # Once we're done, close properly the dataset
@@ -272,7 +271,6 @@ class ConvertGeotiff:
         if self.date:
             date = datetime.strptime(self.date[:-6], "%Y-%m-%dT%H:%M:%S")
             dateFormated = '{}-{}-{}'.format(date.strftime("%Y"), date.strftime("%m"), date.strftime("%d"))
-            print(dateFormated)
             feature.SetField("date", dateFormated)
 
         layer.CreateFeature(feature)
