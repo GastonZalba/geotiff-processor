@@ -84,7 +84,7 @@ class ConvertGeotiff:
                         os.path.splitext(file)[0]))  # Unique Identifier
 
                     print('Exporting storage files...')
-                    self.exportStorageFiles(file_ds, file)
+                    #self.exportStorageFiles(file_ds, file)
 
                     print('Exporting geoserver files...')
                     self.exportGeoserverFiles(file_ds, file)
@@ -102,6 +102,7 @@ class ConvertGeotiff:
             'format': 'GTiff',
             'xRes': params.geoserver['gsd']/100,
             'yRes': params.geoserver['gsd']/100,
+            'srcSRS': 'EPSG:{}'.format(self.epsg),
             'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg'])
         }
 
@@ -134,16 +135,16 @@ class ConvertGeotiff:
         if (params.geoserver['outline']):
             self.exportOutline(fileToConvert, file)
 
-        ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
+        # ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
 
-        if (params.geoserver['overviews']):
-            self.createOverviews(ds)
+        # if (params.geoserver['overviews']):
+        #     self.createOverviews(ds)
 
         ds = None
 
         # Delete tmp files
-        if tmpWarp:
-            del tmpWarp
+        #if tmpWarp:
+            #del tmpWarp
 
     def exportStorageFiles(self, filepath, file):
         '''
@@ -211,6 +212,8 @@ class ConvertGeotiff:
 
         maskBand = file_ds.GetRasterBand(4)
 
+        print(maskBand)
+
         gdal.Polygonize(maskBand, maskBand, outLayer, -1, [], callback=None)
 
         tmpOutDatasource = None
@@ -243,12 +246,13 @@ class ConvertGeotiff:
             area = geom.GetArea()
             if (area > bigger):
                 bigger = area
-                biggerGeom = geom.Clone() # Clonamos para prevenir extraños bugs
+                biggerGeom = geom.Clone()
         
         tmp_layer = None
         geom = None
         
         # Simplificamos la geometría para que no tenga tanto detalle y pese menos
+        # Clonamos para prevenir extraños bugs
         simplifyGeom = simplificarGeometria(biggerGeom)
 
         featureDefn = layer.GetLayerDefn()

@@ -12,7 +12,7 @@ geoserver = {
     'gsd': 20,  # cm
     'overviews': True,
     'outline': True,
-    'outlineSimplify': 0.01325,
+    'outlineSimplify': 1,
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
