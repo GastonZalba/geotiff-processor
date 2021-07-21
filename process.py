@@ -84,7 +84,7 @@ class ConvertGeotiff:
                         os.path.splitext(file)[0]))  # Unique Identifier
 
                     print('Exporting storage files...')
-                    #self.exportStorageFiles(file_ds, file)
+                    self.exportStorageFiles(file_ds, file)
 
                     print('Exporting geoserver files...')
                     self.exportGeoserverFiles(file_ds, file)
@@ -137,10 +137,10 @@ class ConvertGeotiff:
         if (params.geoserver['outline']):
             self.exportOutline(fileToConvert, file)
 
-        # ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
+        ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
 
-        # if (params.geoserver['overviews']):
-        #     self.createOverviews(ds)
+        if (params.geoserver['overviews']):
+            self.createOverviews(ds)
 
         ds = None
 
