@@ -98,18 +98,20 @@ class ConvertGeotiff:
 
         print('Converting {}...'.format(file))
 
-        kwargs = {
-            'format': 'GTiff',
-            'xRes': params.geoserver['gsd']/100,
-            'yRes': params.geoserver['gsd']/100,
-            'srcSRS': 'EPSG:{}'.format(self.epsg),
-            'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg'])
-        }
-
         ds = None
 
         # if file has diferent epsg
         if (self.epsg != params.geoserver['epsg']):
+
+            kwargs = {
+                'format': 'GTiff',
+                'xRes': params.geoserver['gsd']/100,
+                'yRes': params.geoserver['gsd']/100,
+                'srcSRS': 'EPSG:{}'.format(self.epsg),
+                'multithread': True,
+                'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg'])
+            }
+
             tmpWarp = tempfile.gettempdir() + "\\" + file
             print('Converting EPSG:{} to EPSG:{}'.format(
                 self.epsg, params.geoserver['epsg']))
@@ -143,8 +145,8 @@ class ConvertGeotiff:
         ds = None
 
         # Delete tmp files
-        #if tmpWarp:
-            #del tmpWarp
+        if tmpWarp:
+            del tmpWarp
 
     def exportStorageFiles(self, filepath, file):
         '''
@@ -197,9 +199,12 @@ class ConvertGeotiff:
 
         geoDriver = ogr.GetDriverByName("GeoJSON")
         srs = osr.SpatialReference()
-        srs.ImportFromEPSG(params.geoserver['epsg'])
+        res = srs.ImportFromEPSG(params.geoserver['epsg'])
 
-        # Creamos archivo temporario con contonro
+        if res != 0:
+            raise RuntimeError(repr(res) + ': no se pudo importar EPSG')
+            
+        # Creamos archivo temporario con contorno
         tmpGdaloutput = tempfile.gettempdir() + "\\" + os.path.splitext(
              file)[0] + '.geojson'
 
@@ -212,13 +217,11 @@ class ConvertGeotiff:
 
         maskBand = file_ds.GetRasterBand(4)
 
-        print(maskBand)
-
         gdal.Polygonize(maskBand, maskBand, outLayer, -1, [], callback=None)
-
+ 
         tmpOutDatasource = None
 
-        # # Creamos archivo final a partir del temporario
+        # Creamos archivo final a partir del temporario
         gdaloutput = os.path.splitext(
             file)[0] + '_outline_EPSG-{}.geojson'.format(params.geoserver['epsg'])
 
@@ -232,7 +235,7 @@ class ConvertGeotiff:
         outDatasource = geoDriver.CreateDataSource(gdaloutput)
 
         # create one layer
-        layer = outDatasource.CreateLayer("outline", srs, ogr.wkbPolygon)
+        layer = outDatasource.CreateLayer("outline", srs=srs, geom_type=ogr.wkbPolygon)
 
         shp = ogr.Open(tmpGdaloutput, 0)
         tmp_layer = shp.GetLayer()
@@ -246,40 +249,51 @@ class ConvertGeotiff:
             area = geom.GetArea()
             if (area > bigger):
                 bigger = area
-                biggerGeom = geom.Clone()
+                biggerGeom = geom.Clone() # Clonamos para prevenir extraños bugs
         
         tmp_layer = None
         geom = None
         
-        # Simplificamos la geometría para que no tenga tanto detalle y pese menos
-        # Clonamos para prevenir extraños bugs
-        simplifyGeom = simplificarGeometria(biggerGeom)
+        # to fix some geometry errors
+        biggerGeom = biggerGeom.Buffer(10)
 
-        featureDefn = layer.GetLayerDefn()
+        if biggerGeom.IsValid() != True:
+            print('Invalid geometry')
 
-        featureDefn.AddFieldDefn(ogr.FieldDefn("gsd", ogr.OFTReal))
-        featureDefn.AddFieldDefn(ogr.FieldDefn("srs", ogr.OFTString))
-        featureDefn.AddFieldDefn(ogr.FieldDefn("registroid", ogr.OFTInteger64))
+        else:
 
-        if self.date:
-            featureDefn.AddFieldDefn(ogr.FieldDefn("date", ogr.OFTDate))
+            # Simplificamos la geometría para que no tenga tanto detalle y pese menos
+            simplifyGeom = simplificarGeometria(biggerGeom)
+            
+            if str(simplifyGeom) == 'POLYGON EMPTY':
+                print('Error on reading POLYGON')
+        
+            else:
 
-        # Create the feature and set values
-        feature = ogr.Feature(featureDefn)
-        feature.SetGeometry(simplifyGeom)
+                featureDefn = layer.GetLayerDefn()
 
-        feature.SetField("gsd", self.original_gsd)
-        feature.SetField("srs", 'EPSG:{}'.format(self.epsg))
-        feature.SetField('registroid', os.path.splitext(file)[0])
+                featureDefn.AddFieldDefn(ogr.FieldDefn("gsd", ogr.OFTReal))
+                featureDefn.AddFieldDefn(ogr.FieldDefn("registroid", ogr.OFTInteger64))
 
-        if self.date:
-            date = datetime.strptime(self.date[:-6], "%Y-%m-%dT%H:%M:%S")
-            dateFormated = '{}-{}-{}'.format(date.strftime("%Y"), date.strftime("%m"), date.strftime("%d"))
-            feature.SetField("date", dateFormated)
+                if self.date:
+                    featureDefn.AddFieldDefn(ogr.FieldDefn("date", ogr.OFTDate))
 
-        layer.CreateFeature(feature)
+                # Create the feature and set values
+                feature = ogr.Feature(featureDefn)
+                feature.SetGeometry(simplifyGeom)
 
-        feature = None
+                feature.SetField("gsd", self.original_gsd)
+                feature.SetField('registroid', os.path.splitext(file)[0])
+
+                if self.date:
+                    date = datetime.strptime(self.date[:-6], "%Y-%m-%dT%H:%M:%S")
+                    dateFormated = '{}-{}-{}'.format(date.strftime("%Y"), date.strftime("%m"), date.strftime("%d"))
+                    feature.SetField("date", dateFormated)
+
+                layer.CreateFeature(feature)
+
+                feature = None
+            
         outDatasource = None
 
         # Eliminamos geojson temporario
