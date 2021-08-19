@@ -14,7 +14,7 @@ except:
 
 class ConvertGeotiff:
     '''
-    Some docs:
+    Some helpful docs:
     https://pcjericks.github.io/py-gdalogr-cookbook/
     https://docs.geoserver.geo-solutions.it/edu/en/raster_data/advanced_gdal/example5.html
     https://gdal.org/tutorials/raster_api_tut.html
@@ -26,7 +26,7 @@ class ConvertGeotiff:
         version_num = int(gdal.VersionInfo('VERSION_NUM'))
         print('GDAL Version: {}'.format(version_num))
 
-        # this allows GDAL to throw Python Exceptions
+        # Allows GDAL to throw Python Exceptions
         gdal.UseExceptions()
 
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
@@ -47,7 +47,7 @@ class ConvertGeotiff:
 
     def processTifs(self):
 
-        # Find all .tif extensions
+        # Find all .tif extensions in the inout folder
         for subdir, dirs, files in os.walk(params.input_folder):
             for file in files:
                 filepath = subdir + os.sep + file
@@ -79,7 +79,7 @@ class ConvertGeotiff:
 
                     self.extra_metadata = params.metadata
 
-                    # filename must be an unique identifier
+                    # Filename must be an unique identifier
                     self.extra_metadata.append('registroId={}'.format(
                         os.path.splitext(file)[0]))  # Unique Identifier
 
@@ -193,6 +193,10 @@ class ConvertGeotiff:
         return geotiff
 
     def exportOutline(self, file_ds, file):
+        '''
+        Export a vector file with the raster's outline. This file
+        must be uploaded to the wms layer in the geoserver
+        '''
 
         def simplificarGeometria(geom):
             return geom.Simplify(params.geoserver['outlineSimplify'])
@@ -204,7 +208,7 @@ class ConvertGeotiff:
         if res != 0:
             raise RuntimeError(repr(res) + ': no se pudo importar EPSG')
             
-        # Creamos archivo temporario con contorno
+        # Temporary vector file
         tmpGdaloutput = tempfile.gettempdir() + "\\" + os.path.splitext(
              file)[0] + '.geojson'
 
@@ -217,11 +221,12 @@ class ConvertGeotiff:
 
         maskBand = file_ds.GetRasterBand(4)
 
+        # Create the outline based on the alpha channel
         gdal.Polygonize(maskBand, maskBand, outLayer, -1, [], callback=None)
  
         tmpOutDatasource = None
 
-        # Creamos archivo final a partir del temporario
+        # Final vector file
         gdaloutput = os.path.splitext(
             file)[0] + '_outline_EPSG-{}.geojson'.format(params.geoserver['epsg'])
 
@@ -243,18 +248,18 @@ class ConvertGeotiff:
         bigger = 0
         biggerGeom = 0
 
-        # Sólo conservamos el polígono más grande
+        # Only keep bigger polygon
         for feature in tmp_layer:
             geom = feature.geometry()
             area = geom.GetArea()
             if (area > bigger):
                 bigger = area
-                biggerGeom = geom.Clone() # Clonamos para prevenir extraños bugs
+                biggerGeom = geom.Clone() # Clone to prevent multiiple GDAL bugs
         
         tmp_layer = None
         geom = None
         
-        # to fix some geometry errors
+        # Use this to fix some geometry errors
         biggerGeom = biggerGeom.Buffer(10)
 
         if biggerGeom.IsValid() != True:
@@ -262,7 +267,7 @@ class ConvertGeotiff:
 
         else:
 
-            # Simplificamos la geometría para que no tenga tanto detalle y pese menos
+            # Simplify the geom to prevent excesive detail and bigger file sizes
             simplifyGeom = simplificarGeometria(biggerGeom)
             
             if str(simplifyGeom) == 'POLYGON EMPTY':
@@ -296,13 +301,15 @@ class ConvertGeotiff:
             
         outDatasource = None
 
-        # Eliminamos geojson temporario
+        # Delete temp file
         del tmpGdaloutput
 
     def createOverviews(self, ds):
         '''
         Overviews are duplicate versions of your original data, but resampled to a lower resolution
-        By default, overviews take the same compression type and transparency masks of the input dataset
+        By default, overviews take the same compression type and transparency masks of the input dataset.
+
+        This allow to speedup opening and viewing the files on QGis, Autocad, Geoserver, etc.
         '''
         ds.BuildOverviews("AVERAGE", [2, 4, 8, 16, 32, 64, 128, 256])
 
