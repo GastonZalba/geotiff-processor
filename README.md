@@ -1,18 +1,24 @@
 # Procesamiento de archivos Geotiff
-Script en Python para procesar ortomosaicos/geotifs para poder ser subidos a geoservers como capa raster, y a la nube para ser descargados.
+Script en Python para procesar ortomosaicos/geotifs para subirlos a geoservers como capa raster, y a la nube para ser descargados.
 
 El script crea los siguientes archivos optimizados:
 - para subir al geoserver
-    - .tif en calidad intermedia (con overviews/render piramidal en diferentes escalas)
+    - .tif en calidad intermedia (con overviews/render piramidal en diferentes escalas), EPSG:3857
     - .geojson con el contorno de la imagen para subir al wms, con los campos gsd, srs, registroid y date (si existe)
 - para subir a la nube:
-    - .tif en calidad baja para usar como preview (GSD 80cm)
-    - .tif en calidad media/alta para ser alojado en la nube
+    - .tif en calidad baja para usar como preview (GSD 80cm), EPSG original
+    - .tif en calidad media/alta para ser alojado en la nube, EPSG original
     - .tfw con la información geoespacial
 
 ## Instalación
 - Descargar e instalar [Python](https://www.python.org/downloads/)
+- Testear en console `python --version` y `pip --version` para corroborar que esté todo andando.
 - Descargar [GDAL](https://www.lfd.uci.edu/~gohlke/pythonlibs/#gdal), seleccionando la versión más nueva de GDAL, y la adecuada según la versión de Python instalado y el procesador. Instalar usando `pip install GDAL-3.3.1-cp37-cp37m-win_amd64.whl` (ajustando según la versión descargada).
+- Para poder usar el paquete instalado desde la consola, configurar variables de entorno (poniendo la ruta completa según donde esté instalado el paquete):
+    - `GDAL_DATA`: '...\Python\Python37\Lib\site-packages\osgeo\data\gdal'
+    - `PROJ_LIB`: '...\Python\Python37\Lib\site-packages\osgeo\data\proj'
+    - Agregar a la variable `PATH` la ruta 'Python\Python37\Lib\site-packages\osgeo'
+    - Chequear en consola `gdalinfo --version`
 
 ## Uso
 - Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`
