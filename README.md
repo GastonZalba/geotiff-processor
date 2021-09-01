@@ -17,7 +17,7 @@ El script crea los siguientes archivos optimizados:
 - Para poder usar el paquete instalado desde la consola, configurar variables de entorno (poniendo la ruta completa según donde esté instalado el paquete):
     - `GDAL_DATA`: '...\Python\Python37\Lib\site-packages\osgeo\data\gdal'
     - `PROJ_LIB`: '...\Python\Python37\Lib\site-packages\osgeo\data\proj'
-    - Agregar a la variable `PATH` la ruta 'Python\Python37\Lib\site-packages\osgeo'
+    - Agregar a la variable `PATH` la ruta '...\Python\Python37\Lib\site-packages\osgeo'
     - Chequear en consola `gdalinfo --version`
 
 ## Uso
