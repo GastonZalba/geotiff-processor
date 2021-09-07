@@ -60,7 +60,7 @@ class ConvertGeotiff:
             for file in files:
                 filepath = subdir + os.sep + file
 
-                if filepath.endswith(".tif"):
+                if (filepath.endswith(".tif") | filepath.endswith(".tiff")):
                     try:
                         file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
                     except RuntimeError as e:
@@ -71,6 +71,11 @@ class ConvertGeotiff:
                     # Random hash to be used as the map id
                     # https://docs.python.org/3/library/secrets.html
                     self.hash = secrets.token_hex(nbytes=6)
+
+                    self.registroid = self.cleanFilename(
+                        os.path.splitext(file)[0])
+
+                    self.outputFilename = self.registroid + '_' + params.filename_prefix + self.hash
 
                     # File GSD
                     gt = file_ds.GetGeoTransform()
@@ -86,21 +91,49 @@ class ConvertGeotiff:
                     srs = osr.SpatialReference(wkt=prj)
                     self.epsg = int(srs.GetAttrValue('AUTHORITY', 1))
 
-                    # Drone Deploy date
-                    self.date = file_ds.GetMetadataItem("acquisitionStartDate")
+                    # Drone Deploy | Pix4DMatic dates
+                    self.date = self.getDate(file_ds)
 
                     self.extra_metadata = params.metadata
+
+                    self.extra_metadata.append(
+                        'registroId={}'.format(self.registroid))
 
                     self.extra_metadata.append('mapId={}'.format(self.hash))
 
                     print('Exporting storage files...')
-                    self.exportStorageFiles(file_ds, file)
+                    self.exportStorageFiles(file_ds)
 
                     print('Exporting geoserver files...')
                     self.exportGeoserverFiles(file_ds, file)
 
                     # Once we're done, close properly the dataset
                     file_ds = None
+
+                    print('--> Operation finished')
+
+
+    def cleanFilename(self, filename):
+        '''
+        Check if the filename has a dash and a version number. This occurs when
+        there are multiples maps in one registro.
+        Returns only the registtroid
+        '''
+        filename.split('-')[0]
+
+        return filename
+
+    def getDate(self, file_ds):
+        droneDeployDate = file_ds.GetMetadataItem("acquisitionStartDate")
+        pix4DMaticDate = file_ds.GetMetadataItem("TIFFTAG_DATETIME")
+        # pix4dMapper doesn't store date info? WTF
+
+        if droneDeployDate:
+            return datetime.strptime(droneDeployDate[:-6], "%Y-%m-%dT%H:%M:%S")
+        elif pix4DMaticDate:
+            return datetime.strptime(pix4DMaticDate, "%Y:%m:%d %H:%M:%S")
+        else:
+            return None
 
     def exportGeoserverFiles(self, file_ds, file):
 
@@ -128,7 +161,7 @@ class ConvertGeotiff:
             # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
             ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
-        outputFilename = params.filename_prefix + self.hash + '.tif'
+        outputFilename = self.outputFilename + '.tif'
 
         gdaloutput = params.geoserver['output_folder'] + '/' + outputFilename
 
@@ -145,7 +178,7 @@ class ConvertGeotiff:
         fileToConvert = ds if tmpWarp else file_ds
 
         if (params.outlines['enabled']):
-            self.exportOutline(fileToConvert, file)
+            self.exportOutline(fileToConvert)
 
         ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
 
@@ -158,12 +191,12 @@ class ConvertGeotiff:
         if tmpWarp:
             del tmpWarp
 
-    def exportStorageFiles(self, filepath, file):
+    def exportStorageFiles(self, filepath):
         '''
         Export high and low res files
         '''
 
-        outputFilename = params.filename_prefix + self.hash + '.tif'
+        outputFilename = self.outputFilename + '.tif'
 
         gdaloutput = params.storage['output_folder'] + '/' + outputFilename
 
@@ -188,7 +221,7 @@ class ConvertGeotiff:
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
-        outputPreviewFilename = self.hash + '.jpg'
+        outputPreviewFilename = self.outputFilename + '.jpg'
 
         gdaloutput = params.storagePreview['output_folder'] + \
             '/' + outputPreviewFilename
@@ -208,7 +241,7 @@ class ConvertGeotiff:
 
         return geotiff
 
-    def exportOutline(self, file_ds, file):
+    def exportOutline(self, file_ds):
         '''
         Export a vector file with the raster's outline. This file
         must be uploaded to the wms layer in the geoserver
@@ -224,7 +257,7 @@ class ConvertGeotiff:
         if res != 0:
             raise RuntimeError(repr(res) + ': EPSG not found')
 
-        tmpFilename = params.filename_prefix + self.hash + '.geojson'
+        tmpFilename = self.outputFilename + '.geojson'
 
         # Temporary vector file
         tmpGdaloutput = tempfile.gettempdir() + "\\" + tmpFilename
@@ -244,7 +277,7 @@ class ConvertGeotiff:
         tmpOutDatasource = None
 
         # Final vector file
-        gdaloutput = params.filename_prefix + self.hash + '.geojson'
+        gdaloutput = self.outputFilename + '.geojson'
 
         gdaloutput = params.outlines['output_folder'] + '/' + gdaloutput
 
@@ -295,7 +328,10 @@ class ConvertGeotiff:
                 featureDefn = layer.GetLayerDefn()
 
                 featureDefn.AddFieldDefn(ogr.FieldDefn("gsd", ogr.OFTReal))
-                featureDefn.AddFieldDefn(ogr.FieldDefn("mapid", ogr.OFTString))
+                featureDefn.AddFieldDefn(ogr.FieldDefn(
+                    "registro_id", ogr.OFTInteger64))
+                featureDefn.AddFieldDefn(
+                    ogr.FieldDefn("map_id", ogr.OFTString))
 
                 if self.date:
                     featureDefn.AddFieldDefn(
@@ -306,13 +342,12 @@ class ConvertGeotiff:
                 feature.SetGeometry(simplifyGeom)
 
                 feature.SetField("gsd", self.original_gsd)
-                feature.SetField('mapId', self.hash)
+                feature.SetField('map_id', self.hash)
+                feature.SetField('registro_id', self.registroid)
 
                 if self.date:
-                    date = datetime.strptime(
-                        self.date[:-6], "%Y-%m-%dT%H:%M:%S")
-                    dateFormated = '{}-{}-{}'.format(date.strftime(
-                        "%Y"), date.strftime("%m"), date.strftime("%d"))
+                    dateFormated = '{}-{}-{}'.format(self.date.strftime(
+                        "%Y"), self.date.strftime("%m"), self.date.strftime("%d"))
                     feature.SetField("date", dateFormated)
 
                 layer.CreateFeature(feature)

@@ -22,7 +22,8 @@ El script crea los siguientes archivos optimizados:
 
 ## Uso
 - Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`
-- Ejecutar `python process.py` para iniciar la conversión. Loa rchivos procesador serán creados en la carpeta `output`
+- Ponerles como nombre el número de registro audiovisual al que pertenecen (este dato será incorporado como metadata en los archivos procesados). NOTA: en caso de que un registro tenga más de un mapeo, agregarle al final de cada nombre de archivo un guión y el número; `-1`,`-2`, etc.
+- Ejecutar `python process.py` para iniciar la conversión. Los archivos procesados serán creados en la carpeta `output`
 
 ## Configuración
 - De ser necesario modificar archivo `params.py` según formatos de exportación, metadata y carpetas.
