@@ -1,5 +1,7 @@
 import sys
 import os
+import secrets
+import shutil
 import tempfile
 from pathlib import Path
 from datetime import datetime
@@ -30,7 +32,6 @@ class ConvertGeotiff:
         gdal.UseExceptions()
 
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
-
         self.checkDirectories()
         self.processTifs()
 
@@ -38,11 +39,18 @@ class ConvertGeotiff:
         '''
         Create folders if no exists
         '''
+
+        if params.clean_output_folder:
+            if os.path.exists(params.output_folder):
+                shutil.rmtree(Path(params.output_folder))
+
         Path(params.geoserver['output_folder']).mkdir(
             parents=True, exist_ok=True)
         Path(params.storage['output_folder']).mkdir(
             parents=True, exist_ok=True)
         Path(params.storagePreview['output_folder']).mkdir(
+            parents=True, exist_ok=True)
+        Path(params.outlines['output_folder']).mkdir(
             parents=True, exist_ok=True)
 
     def processTifs(self):
@@ -59,6 +67,10 @@ class ConvertGeotiff:
                         print('Unable to open {}'.format(filepath))
                         print(e)
                         sys.exit(1)
+
+                    # Random hash to be used as the map id
+                    # https://docs.python.org/3/library/secrets.html
+                    self.hash = secrets.token_hex(nbytes=6)
 
                     # File GSD
                     gt = file_ds.GetGeoTransform()
@@ -79,9 +91,7 @@ class ConvertGeotiff:
 
                     self.extra_metadata = params.metadata
 
-                    # Filename must be an unique identifier
-                    self.extra_metadata.append('registroId={}'.format(
-                        os.path.splitext(file)[0]))  # Unique Identifier
+                    self.extra_metadata.append('mapId={}'.format(self.hash))
 
                     print('Exporting storage files...')
                     self.exportStorageFiles(file_ds, file)
@@ -118,9 +128,9 @@ class ConvertGeotiff:
             # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
             ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
-        gdaloutput = params.geoserver['output_folder'] + '/' + \
-            os.path.splitext(
-                file)[0] + '_EPSG-{}_GSD-{}.tif'.format(params.geoserver['epsg'], params.geoserver['gsd'])
+        outputFilename = params.filename_prefix + self.hash + '.tif'
+
+        gdaloutput = params.geoserver['output_folder'] + '/' + outputFilename
 
         kwargs = {
             'format': 'GTiff',
@@ -134,7 +144,7 @@ class ConvertGeotiff:
 
         fileToConvert = ds if tmpWarp else file_ds
 
-        if (params.geoserver['outline']):
+        if (params.outlines['enabled']):
             self.exportOutline(fileToConvert, file)
 
         ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
@@ -153,10 +163,9 @@ class ConvertGeotiff:
         Export high and low res files
         '''
 
-        gdaloutput = os.path.splitext(
-            file)[0] + '_EPSG-{}_GSD-{}.tif'.format(self.epsg, self.original_gsd)
+        outputFilename = params.filename_prefix + self.hash + '.tif'
 
-        gdaloutput = params.storage['output_folder'] + '/' + gdaloutput
+        gdaloutput = params.storage['output_folder'] + '/' + outputFilename
 
         print('Exporting {}'.format(gdaloutput))
 
@@ -164,7 +173,6 @@ class ConvertGeotiff:
             'format': 'GTiff',
             'bandList': [1, 2, 3],
             'maskBand': 4,
-            'format': 'GTiff',
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
             'creationOptions': params.storage['creationOptions'],
@@ -173,22 +181,30 @@ class ConvertGeotiff:
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
+        # temporary disable the "auxiliary metadata" beacuse JPG doesn't support it,
+        # so this creates an extra file that we don't need (...aux.xml)
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
+
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
-        gdaloutput = params.storagePreview['output_folder'] + '/' + \
-            os.path.splitext(file)[0] + '_preview.tif'
+        outputPreviewFilename = self.hash + '.jpg'
+
+        gdaloutput = params.storagePreview['output_folder'] + \
+            '/' + outputPreviewFilename
 
         print('Exporting {}'.format(gdaloutput))
 
         kwargs = {
-            'format': 'GTiff',
+            'format': params.storagePreview['format'],
             'width': params.storagePreview['width'],  # px
-            'creationOptions': params.storagePreview['creationOptions'],
-            'metadataOptions': self.extra_metadata
+            'creationOptions': params.storagePreview['creationOptions']
         }
 
         gdal.Translate(gdaloutput, geotiff, **kwargs)
+
+        # reenable the internal metadata
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
 
         return geotiff
 
@@ -199,18 +215,19 @@ class ConvertGeotiff:
         '''
 
         def simplificarGeometria(geom):
-            return geom.Simplify(params.geoserver['outlineSimplify'])
+            return geom.Simplify(params.outlines['simplify'])
 
         geoDriver = ogr.GetDriverByName("GeoJSON")
         srs = osr.SpatialReference()
         res = srs.ImportFromEPSG(params.geoserver['epsg'])
 
         if res != 0:
-            raise RuntimeError(repr(res) + ': no se pudo importar EPSG')
-            
+            raise RuntimeError(repr(res) + ': EPSG not found')
+
+        tmpFilename = params.filename_prefix + self.hash + '.geojson'
+
         # Temporary vector file
-        tmpGdaloutput = tempfile.gettempdir() + "\\" + os.path.splitext(
-             file)[0] + '.geojson'
+        tmpGdaloutput = tempfile.gettempdir() + "\\" + tmpFilename
 
         if os.path.exists(tmpGdaloutput):
             geoDriver.DeleteDataSource(tmpGdaloutput)
@@ -223,15 +240,14 @@ class ConvertGeotiff:
 
         # Create the outline based on the alpha channel
         gdal.Polygonize(maskBand, maskBand, outLayer, -1, [], callback=None)
- 
+
         tmpOutDatasource = None
 
         # Final vector file
-        gdaloutput = os.path.splitext(
-            file)[0] + '_outline_EPSG-{}.geojson'.format(params.geoserver['epsg'])
+        gdaloutput = params.filename_prefix + self.hash + '.geojson'
 
-        gdaloutput = params.geoserver['output_folder'] + '/' + gdaloutput
-        
+        gdaloutput = params.outlines['output_folder'] + '/' + gdaloutput
+
         print('Exporting outline {}'.format(gdaloutput))
 
         if os.path.exists(gdaloutput):
@@ -240,11 +256,12 @@ class ConvertGeotiff:
         outDatasource = geoDriver.CreateDataSource(gdaloutput)
 
         # create one layer
-        layer = outDatasource.CreateLayer("outline", srs=srs, geom_type=ogr.wkbPolygon)
+        layer = outDatasource.CreateLayer(
+            "outline", srs=srs, geom_type=ogr.wkbPolygon)
 
         shp = ogr.Open(tmpGdaloutput, 0)
         tmp_layer = shp.GetLayer()
-        
+
         bigger = 0
         biggerGeom = 0
 
@@ -254,13 +271,13 @@ class ConvertGeotiff:
             area = geom.GetArea()
             if (area > bigger):
                 bigger = area
-                biggerGeom = geom.Clone() # Clone to prevent multiiple GDAL bugs
-        
+                biggerGeom = geom.Clone()  # Clone to prevent multiiple GDAL bugs
+
         tmp_layer = None
         geom = None
-        
+
         # Use this to fix some geometry errors
-        biggerGeom = biggerGeom.Buffer(10)
+        biggerGeom = biggerGeom.Buffer(params.outlines['buffer'])
 
         if biggerGeom.IsValid() != True:
             print('Invalid geometry')
@@ -269,36 +286,39 @@ class ConvertGeotiff:
 
             # Simplify the geom to prevent excesive detail and bigger file sizes
             simplifyGeom = simplificarGeometria(biggerGeom)
-            
+
             if str(simplifyGeom) == 'POLYGON EMPTY':
                 print('Error on reading POLYGON')
-        
+
             else:
 
                 featureDefn = layer.GetLayerDefn()
 
                 featureDefn.AddFieldDefn(ogr.FieldDefn("gsd", ogr.OFTReal))
-                featureDefn.AddFieldDefn(ogr.FieldDefn("registroid", ogr.OFTInteger64))
+                featureDefn.AddFieldDefn(ogr.FieldDefn("mapid", ogr.OFTString))
 
                 if self.date:
-                    featureDefn.AddFieldDefn(ogr.FieldDefn("date", ogr.OFTDate))
+                    featureDefn.AddFieldDefn(
+                        ogr.FieldDefn("date", ogr.OFTDate))
 
                 # Create the feature and set values
                 feature = ogr.Feature(featureDefn)
                 feature.SetGeometry(simplifyGeom)
 
                 feature.SetField("gsd", self.original_gsd)
-                feature.SetField('registroid', os.path.splitext(file)[0])
+                feature.SetField('mapId', self.hash)
 
                 if self.date:
-                    date = datetime.strptime(self.date[:-6], "%Y-%m-%dT%H:%M:%S")
-                    dateFormated = '{}-{}-{}'.format(date.strftime("%Y"), date.strftime("%m"), date.strftime("%d"))
+                    date = datetime.strptime(
+                        self.date[:-6], "%Y-%m-%dT%H:%M:%S")
+                    dateFormated = '{}-{}-{}'.format(date.strftime(
+                        "%Y"), date.strftime("%m"), date.strftime("%d"))
                     feature.SetField("date", dateFormated)
 
                 layer.CreateFeature(feature)
 
                 feature = None
-            
+
         outDatasource = None
 
         # Delete temp file

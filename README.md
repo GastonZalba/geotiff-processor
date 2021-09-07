@@ -6,7 +6,7 @@ El script crea los siguientes archivos optimizados:
     - .tif en calidad intermedia (con overviews/render piramidal en diferentes escalas), EPSG:3857
     - .geojson con el contorno de la imagen para subir al wms, con los campos gsd, srs, registroid y date (si existe)
 - para subir a la nube:
-    - .tif en calidad baja para usar como preview (GSD 80cm), EPSG original
+    - .tif en calidad baja para usar como preview (w:650px), EPSG original
     - .tif en calidad media/alta para ser alojado en la nube, EPSG original
     - .tfw con la información geoespacial
 
@@ -22,7 +22,6 @@ El script crea los siguientes archivos optimizados:
 
 ## Uso
 - Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`
-- Ponerles como nombre el número de registro audiovisual al que pertenecen (este dato será incorporado como metadata en los archivos procesados)
 - Ejecutar `python process.py` para iniciar la conversión. Loa rchivos procesador serán creados en la carpeta `output`
 
 ## Configuración
