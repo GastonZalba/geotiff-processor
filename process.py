@@ -295,30 +295,39 @@ class ConvertGeotiff:
         shp = ogr.Open(tmpGdaloutput, 0)
         tmp_layer = shp.GetLayer()
 
-        bigger = 0
-        biggerGeom = 0
+        biggerGeoms = []
 
-        # Only keep bigger polygon
         for feature in tmp_layer:
             geom = feature.geometry()
             area = geom.GetArea()
-            if (area > bigger):
-                bigger = area
-                biggerGeom = geom.Clone()  # Clone to prevent multiiple GDAL bugs
+
+            # Only keep bigger polygons
+            if area > params.outlines['minimum_area']:
+                print('Polygon area in m2:', area)
+                biggerGeoms.append(geom.Clone())  # Clone to prevent multiiple GDAL bugs
 
         tmp_layer = None
         geom = None
 
-        # Use this to fix some geometry errors
-        biggerGeom = biggerGeom.Buffer(params.outlines['buffer'])
+        # Convert mutiples Polygons to an unique MultiPolygon
+        mergedGeom = ogr.Geometry(ogr.wkbMultiPolygon)
 
-        if biggerGeom.IsValid() != True:
+        for geom in biggerGeoms:                      
+            mergedGeom.AddGeometryDirectly(geom)  
+        
+        # Use this to fix some geometry errors
+        mergedGeom = mergedGeom.Buffer(params.outlines['buffer'])
+
+        # https://gdal.org/python/osgeo.ogr.Geometry-class.html#MakeValid
+        mergedGeom = mergedGeom.MakeValid()
+
+        if mergedGeom.IsValid() != True:
             print('Invalid geometry')
 
         else:
 
             # Simplify the geom to prevent excesive detail and bigger file sizes
-            simplifyGeom = simplificarGeometria(biggerGeom)
+            simplifyGeom = simplificarGeometria(mergedGeom)
 
             if str(simplifyGeom) == 'POLYGON EMPTY':
                 print('Error on reading POLYGON')

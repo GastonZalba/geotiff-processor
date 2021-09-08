@@ -57,6 +57,9 @@ outlines = {
     'enabled': True,
     'output_folder': output_folder + '/outlines',
 
+    # Polygons bigger than this area arepreserved in the outlines
+    'minimum_area': 10, # m2
+
     # Use to simplify the geometry
     # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Simplify
     'simplify': 1,
