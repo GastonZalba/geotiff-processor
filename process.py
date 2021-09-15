@@ -116,10 +116,10 @@ class ConvertGeotiff:
     def cleanFilename(self, filename):
         '''
         Check if the filename has a dash and a version number. This occurs when
-        there are multiples maps in one registro.
+        there are multiples maps in one registro.está hecho todo bien
         Returns only the registtroid
         '''
-        filename.split('-')[0]
+        filename = filename.split('-')[0]
 
         return filename
 
