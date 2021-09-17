@@ -33,6 +33,7 @@ storage = {
     'gsd': None,  # None to use original | cm
     'overviews': True,
     'exportJSON': True,  # To export a JSON data file
+    'previews': True,
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=IF_NEEDED',
@@ -44,7 +45,7 @@ storage = {
 }
 
 storageJSONdata = {
-    'output_folder': output_folder + '/storage/JSONdata'
+    'output_folder': output_folder + '/storage/jsondata'
 }
 
 storagePreview = {
