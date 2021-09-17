@@ -36,6 +36,7 @@ class ConvertGeotiff:
         self.checkDirectories()
         self.processTifs()
 
+
     def checkDirectories(self):
         '''
         Create folders if no exists
@@ -55,6 +56,7 @@ class ConvertGeotiff:
             parents=True, exist_ok=True)
         Path(params.outlines['output_folder']).mkdir(
             parents=True, exist_ok=True)
+
 
     def processTifs(self):
 
@@ -126,6 +128,7 @@ class ConvertGeotiff:
 
         return filename
 
+
     def getDate(self, file_ds):
         droneDeployDate = file_ds.GetMetadataItem("acquisitionStartDate")
         pix4DMaticDate = file_ds.GetMetadataItem("TIFFTAG_DATETIME")
@@ -137,6 +140,7 @@ class ConvertGeotiff:
             return datetime.strptime(pix4DMaticDate, "%Y:%m:%d %H:%M:%S")
         else:
             return None
+
 
     def exportGeoserverFiles(self, file_ds, file):
 
@@ -164,9 +168,9 @@ class ConvertGeotiff:
             # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
             ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
-        outputFilename = self.outputFilename + '.tif'
+        outputFilename = '{}.tif'.format(self.outputFilename)
 
-        gdaloutput = params.geoserver['output_folder'] + '/' + outputFilename
+        gdaloutput = '{}/{}'.format(params.geoserver['output_folder'], outputFilename)
 
         kwargs = {
             'format': 'GTiff',
@@ -194,6 +198,7 @@ class ConvertGeotiff:
         if tmpWarp:
             del tmpWarp
 
+
     def exportStorageFiles(self, filepath):
         '''
         Export high and low res files
@@ -201,7 +206,7 @@ class ConvertGeotiff:
 
         outputFilename = '{}.tif'.format(self.outputFilename)
 
-        gdaloutput = params.storage['output_folder'] + '/' + outputFilename
+        gdaloutput = '{}/{}'.format(params.storage['output_folder'], outputFilename)
 
         print('Exporting {}'.format(gdaloutput))
 
@@ -217,35 +222,17 @@ class ConvertGeotiff:
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
-        # temporary disable the "auxiliary metadata" beacuse JPG doesn't support it,
-        # so this creates an extra file that we don't need (...aux.xml)
-        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
-
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
         if(params.storage['exportJSON']):
             self.exportJSONdata(geotiff)
 
-        outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
-
-        gdaloutput = params.storagePreview['output_folder'] + \
-            '/' + outputPreviewFilename
-
-        print('Exporting {}'.format(gdaloutput))
-
-        kwargs = {
-            'format': params.storagePreview['format'],
-            'width': params.storagePreview['width'],  # px
-            'creationOptions': params.storagePreview['creationOptions']
-        }
-
-        gdal.Translate(gdaloutput, geotiff, **kwargs)
-
-        # reenable the internal metadata
-        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
+        if(params.storage['previews']):
+            self.exportStoragePreview(geotiff)
 
         return geotiff
+
 
     def exportOutline(self, file_ds):
         '''
@@ -285,7 +272,7 @@ class ConvertGeotiff:
         # Final vector file
         gdaloutput = '{}.geojson'.format(self.outputFilename)
 
-        gdaloutput = params.outlines['output_folder'] + '/' + gdaloutput
+        gdaloutput = '{}/{}'.format(params.outlines['output_folder'], gdaloutput)
 
         print('Exporting outline {}'.format(gdaloutput))
 
@@ -374,6 +361,7 @@ class ConvertGeotiff:
         # Delete temp file
         del tmpGdaloutput
 
+
     def createOverviews(self, ds):
         '''
         Overviews are duplicate versions of your original data, but resampled to a lower resolution
@@ -383,20 +371,55 @@ class ConvertGeotiff:
         '''
         ds.BuildOverviews("AVERAGE", [2, 4, 8, 16, 32, 64, 128, 256])
 
+
     def exportJSONdata(self,ds):
+        '''
+        Export a JSON file
+        '''
         outputJSONFilename = '{}.json'.format(self.outputFilename)
-        gdaloutput = params.storageJSONdata['output_folder'] + '/' + outputJSONFilename
+
+        gdaloutput = '{}/{}'.format(params.storageJSONdata['output_folder'], outputJSONFilename)
+        
         print('Exporting JSON data {}'.format(gdaloutput))
         
+        #https://gdal.org/python/osgeo.gdal-module.html#InfoOptions
+
         kwargs = {
             'allMetadata':True,
             'format':'json'
         }
 
         data = gdal.Info(ds,**kwargs)
+        
         file = open(gdaloutput,'w')
         json.dump(data,file)
+        
         file.close()
+
+
+    def exportStoragePreview(self, geotiff):
+
+        # temporary disable the "auxiliary metadata" because JPG doesn't support it,
+        # so this creates an extra file that we don't need (...aux.xml)
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
+
+
+        outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
+
+        gdaloutput = '{}/{}'.format(params.storagePreview['output_folder'], outputPreviewFilename)
+
+        print('Exporting preview {}'.format(gdaloutput))
+
+        kwargs = {
+            'format': params.storagePreview['format'],
+            'width': params.storagePreview['width'],  # px
+            'creationOptions': params.storagePreview['creationOptions']
+        }
+
+        gdal.Translate(gdaloutput, geotiff, **kwargs)
+
+        # reenable the internal metadata
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
 
 
 
