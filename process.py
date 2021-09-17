@@ -3,6 +3,7 @@ import os
 import secrets
 import shutil
 import tempfile
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -49,6 +50,8 @@ class ConvertGeotiff:
         Path(params.storage['output_folder']).mkdir(
             parents=True, exist_ok=True)
         Path(params.storagePreview['output_folder']).mkdir(
+            parents=True, exist_ok=True)
+        Path(params.storageJSONdata['output_folder']).mkdir(
             parents=True, exist_ok=True)
         Path(params.outlines['output_folder']).mkdir(
             parents=True, exist_ok=True)
@@ -196,7 +199,7 @@ class ConvertGeotiff:
         Export high and low res files
         '''
 
-        outputFilename = self.outputFilename + '.tif'
+        outputFilename = '{}.tif'.format(self.outputFilename)
 
         gdaloutput = params.storage['output_folder'] + '/' + outputFilename
 
@@ -221,7 +224,10 @@ class ConvertGeotiff:
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
-        outputPreviewFilename = self.outputFilename + '.jpg'
+        if(params.storage['exportJSON']):
+            self.exportJSONdata(geotiff)
+
+        outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
 
         gdaloutput = params.storagePreview['output_folder'] + \
             '/' + outputPreviewFilename
@@ -257,7 +263,7 @@ class ConvertGeotiff:
         if res != 0:
             raise RuntimeError(repr(res) + ': EPSG not found')
 
-        tmpFilename = self.outputFilename + '.geojson'
+        tmpFilename = '{}.geojson'.format(self.outputFilename)
 
         # Temporary vector file
         tmpGdaloutput = tempfile.gettempdir() + "\\" + tmpFilename
@@ -277,7 +283,7 @@ class ConvertGeotiff:
         tmpOutDatasource = None
 
         # Final vector file
-        gdaloutput = self.outputFilename + '.geojson'
+        gdaloutput = '{}.geojson'.format(self.outputFilename)
 
         gdaloutput = params.outlines['output_folder'] + '/' + gdaloutput
 
@@ -376,6 +382,22 @@ class ConvertGeotiff:
         This allow to speedup opening and viewing the files on QGis, Autocad, Geoserver, etc.
         '''
         ds.BuildOverviews("AVERAGE", [2, 4, 8, 16, 32, 64, 128, 256])
+
+    def exportJSONdata(self,ds):
+        outputJSONFilename = '{}.json'.format(self.outputFilename)
+        gdaloutput = params.storageJSONdata['output_folder'] + '/' + outputJSONFilename
+        print('Exporting JSON data {}'.format(gdaloutput))
+        
+        kwargs = {
+            'allMetadata':True,
+            'format':'json'
+        }
+
+        data = gdal.Info(ds,**kwargs)
+        file = open(gdaloutput,'w')
+        json.dump(data,file)
+        file.close()
+
 
 
 ConvertGeotiff()
