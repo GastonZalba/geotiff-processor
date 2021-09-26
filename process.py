@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 import params as params
+from version import __version__
 
 try:
     from osgeo import gdal, osr, ogr
@@ -25,9 +26,11 @@ class ConvertGeotiff:
     https://gdal.org/api/python.html
     '''
 
-    def __init__(self):
+    def __init__(self):        
+        print(f'SCRIPT Version: {__version__}')
+
         version_num = int(gdal.VersionInfo('VERSION_NUM'))
-        print('GDAL Version: {}'.format(version_num))
+        print(f'GDAL Version: {version_num}')        
 
         # Allows GDAL to throw Python Exceptions
         gdal.UseExceptions()
