@@ -159,7 +159,8 @@ class ConvertGeotiff:
                 'yRes': params.geoserver['gsd']/100,
                 'srcSRS': 'EPSG:{}'.format(self.epsg),
                 'multithread': True,
-                'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg'])
+                'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg']),
+                'srcNodata': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             }
 
             tmpWarp = tempfile.gettempdir() + "\\" + file
@@ -179,7 +180,8 @@ class ConvertGeotiff:
             'xRes': params.geoserver['gsd']/100,
             'yRes': params.geoserver['gsd']/100,
             'creationOptions': params.geoserver['creationOptions'],
-            'metadataOptions': self.extra_metadata
+            'metadataOptions': self.extra_metadata,
+            'noData': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         }
 
         fileToConvert = ds if tmpWarp else file_ds
@@ -217,7 +219,8 @@ class ConvertGeotiff:
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
             'creationOptions': params.storage['creationOptions'],
-            'metadataOptions': self.extra_metadata
+            'metadataOptions': self.extra_metadata,
+            'noData': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         }
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
@@ -413,7 +416,8 @@ class ConvertGeotiff:
         kwargs = {
             'format': params.storagePreview['format'],
             'width': params.storagePreview['width'],  # px
-            'creationOptions': params.storagePreview['creationOptions']
+            'creationOptions': params.storagePreview['creationOptions'],
+            'noData': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         }
 
         gdal.Translate(gdaloutput, geotiff, **kwargs)
