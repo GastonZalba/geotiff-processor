@@ -16,6 +16,10 @@ except:
     sys.exit('ERROR: osgeo module was not found')
 
 
+def removeExtension(filename):
+   return os.path.splitext(filename)[0]
+
+
 class ConvertGeotiff:
     '''
     Some helpful docs:
@@ -68,7 +72,7 @@ class ConvertGeotiff:
             for file in files:
                 filepath = subdir + os.sep + file
 
-                if (filepath.endswith(".tif") | filepath.endswith(".tiff")):
+                if (file.endswith(".tif") | file.endswith(".tiff")):
                     try:
                         file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
                     except RuntimeError as e:
@@ -76,14 +80,20 @@ class ConvertGeotiff:
                         print(e)
                         sys.exit(1)
 
-                    # Random hash to be used as the map id
-                    # https://docs.python.org/3/library/secrets.html
-                    self.hash = secrets.token_hex(nbytes=6)
+                    if ("MapId" in file):
 
-                    self.registroid = self.cleanFilename(
-                        os.path.splitext(file)[0])
+                        self.mapId = removeExtension(file.split('MapId-')[1])
+                        self.registroid = file.split("_")[0]
 
-                    self.outputFilename = self.registroid + '_' + params.filename_prefix + self.hash
+                    else:
+
+                        # Random hash to be used as the map id
+                        # https://docs.python.org/3/library/secrets.html
+
+                        self.mapId = secrets.token_hex(nbytes=6)
+                        self.registroid = self.cleanFilename(removeExtension(file))
+
+                    self.outputFilename = self.registroid + '_' + params.filename_prefix + self.mapId
 
                     # File GSD
                     gt = file_ds.GetGeoTransform()
@@ -107,7 +117,7 @@ class ConvertGeotiff:
                     self.extra_metadata.append(
                         'registroId={}'.format(self.registroid))
 
-                    self.extra_metadata.append('mapId={}'.format(self.hash))
+                    self.extra_metadata.append('mapId={}'.format(self.mapId))
 
                     print('Exporting storage files...')
                     self.exportStorageFiles(file_ds)
@@ -350,7 +360,7 @@ class ConvertGeotiff:
                 feature.SetGeometry(simplifyGeom)
 
                 feature.SetField("gsd", self.original_gsd)
-                feature.SetField('map_id', self.hash)
+                feature.SetField('map_id', self.mapId)
                 feature.SetField('registro_id', self.registroid)
 
                 if self.date:
