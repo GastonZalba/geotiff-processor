@@ -2,7 +2,7 @@
 input_folder = 'input'
 output_folder = 'output'
 
-filename_prefix = 'MapId-'
+filename_prefix = '_MapId-'
 
 # To clean the output folder before starting
 clean_output_folder = True
