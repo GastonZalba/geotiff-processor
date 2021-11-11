@@ -17,7 +17,7 @@ except:
 
 
 def removeExtension(filename):
-   return os.path.splitext(filename)[0]
+    return os.path.splitext(filename)[0]
 
 
 class ConvertGeotiff:
@@ -30,11 +30,11 @@ class ConvertGeotiff:
     https://gdal.org/api/python.html
     '''
 
-    def __init__(self):        
+    def __init__(self):
         print(f'SCRIPT Version: {__version__}')
 
         version_num = int(gdal.VersionInfo('VERSION_NUM'))
-        print(f'GDAL Version: {version_num}')        
+        print(f'GDAL Version: {version_num}')
 
         # Allows GDAL to throw Python Exceptions
         gdal.UseExceptions()
@@ -42,7 +42,6 @@ class ConvertGeotiff:
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
         self.checkDirectories()
         self.processTifs()
-
 
     def checkDirectories(self):
         '''
@@ -64,7 +63,6 @@ class ConvertGeotiff:
         Path(params.outlines['output_folder']).mkdir(
             parents=True, exist_ok=True)
 
-
     def processTifs(self):
 
         # Find all .tif extensions in the inout folder
@@ -80,56 +78,53 @@ class ConvertGeotiff:
                         print(e)
                         sys.exit(1)
 
-                    if ("MapId" in file):
+                ok = "MapId" in file
 
-                        self.mapId = removeExtension(file.split('MapId-')[1])
-                        self.registroid = file.split("_")[0]
+                # Random hash to be used as the map id
+                # https://docs.python.org/3/library/secrets.html
 
-                    else:
+                self.mapId = removeExtension(file.split(
+                    'MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
 
-                        # Random hash to be used as the map id
-                        # https://docs.python.org/3/library/secrets.html
+                self.registroid = file.split(
+                    "_")[0] if ok else self.cleanFilename(removeExtension(file))
 
-                        self.mapId = secrets.token_hex(nbytes=6)
-                        self.registroid = self.cleanFilename(removeExtension(file))
+                self.outputFilename = f'{self.registroid}{params.filename_prefix}{self.mapId}'
 
-                    self.outputFilename = self.registroid + '_' + params.filename_prefix + self.mapId
+                # File GSD
+                gt = file_ds.GetGeoTransform()
+                self.pixelSizeX = gt[1]
+                self.pixelSizeY = -gt[5]
 
-                    # File GSD
-                    gt = file_ds.GetGeoTransform()
-                    self.pixelSizeX = gt[1]
-                    self.pixelSizeY = -gt[5]
+                # file's GSD: get average x and y values
+                self.original_gsd = round(
+                    (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
 
-                    # file's GSD: get average x and y values
-                    self.original_gsd = round(
-                        (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
+                # File Projection
+                prj = file_ds.GetProjection()
+                srs = osr.SpatialReference(wkt=prj)
+                self.epsg = int(srs.GetAttrValue('AUTHORITY', 1))
 
-                    # File Projection
-                    prj = file_ds.GetProjection()
-                    srs = osr.SpatialReference(wkt=prj)
-                    self.epsg = int(srs.GetAttrValue('AUTHORITY', 1))
+                # Drone Deploy | Pix4DMatic dates
+                self.date = self.getDate(file_ds)
 
-                    # Drone Deploy | Pix4DMatic dates
-                    self.date = self.getDate(file_ds)
+                self.extra_metadata = params.metadata
 
-                    self.extra_metadata = params.metadata
+                self.extra_metadata.append(
+                    'registroId={}'.format(self.registroid))
 
-                    self.extra_metadata.append(
-                        'registroId={}'.format(self.registroid))
+                self.extra_metadata.append('mapId={}'.format(self.mapId))
 
-                    self.extra_metadata.append('mapId={}'.format(self.mapId))
+                print('Exporting storage files...')
+                self.exportStorageFiles(file_ds)
 
-                    print('Exporting storage files...')
-                    self.exportStorageFiles(file_ds)
+                print('Exporting geoserver files...')
+                self.exportGeoserverFiles(file_ds, file)
 
-                    print('Exporting geoserver files...')
-                    self.exportGeoserverFiles(file_ds, file)
+                # Once we're done, close properly the dataset
+                file_ds = None
 
-                    # Once we're done, close properly the dataset
-                    file_ds = None
-
-                    print('--> Operation finished')
-
+                print('--> Operation finished')
 
     def cleanFilename(self, filename):
         '''
@@ -140,7 +135,6 @@ class ConvertGeotiff:
         filename = filename.split('-')[0]
 
         return filename
-
 
     def getDate(self, file_ds):
         droneDeployDate = file_ds.GetMetadataItem("acquisitionStartDate")
@@ -153,7 +147,6 @@ class ConvertGeotiff:
             return datetime.strptime(pix4DMaticDate, "%Y:%m:%d %H:%M:%S")
         else:
             return None
-
 
     def exportGeoserverFiles(self, file_ds, file):
 
@@ -173,7 +166,8 @@ class ConvertGeotiff:
                 'srcSRS': 'EPSG:{}'.format(self.epsg),
                 'multithread': True,
                 'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg']),
-                'srcNodata': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+                # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+                'srcNodata': 'none'
             }
 
             tmpWarp = tempfile.gettempdir() + "\\" + file
@@ -184,7 +178,8 @@ class ConvertGeotiff:
 
         outputFilename = '{}.tif'.format(self.outputFilename)
 
-        gdaloutput = '{}/{}'.format(params.geoserver['output_folder'], outputFilename)
+        gdaloutput = '{}/{}'.format(
+            params.geoserver['output_folder'], outputFilename)
 
         kwargs = {
             'format': 'GTiff',
@@ -194,7 +189,8 @@ class ConvertGeotiff:
             'yRes': params.geoserver['gsd']/100,
             'creationOptions': params.geoserver['creationOptions'],
             'metadataOptions': self.extra_metadata,
-            'noData': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+            # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+            'noData': 'none'
         }
 
         fileToConvert = ds if tmpWarp else file_ds
@@ -213,7 +209,6 @@ class ConvertGeotiff:
         if tmpWarp:
             del tmpWarp
 
-
     def exportStorageFiles(self, filepath):
         '''
         Export high and low res files
@@ -221,7 +216,8 @@ class ConvertGeotiff:
 
         outputFilename = '{}.tif'.format(self.outputFilename)
 
-        gdaloutput = '{}/{}'.format(params.storage['output_folder'], outputFilename)
+        gdaloutput = '{}/{}'.format(
+            params.storage['output_folder'], outputFilename)
 
         print('Exporting {}'.format(gdaloutput))
 
@@ -233,7 +229,8 @@ class ConvertGeotiff:
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
             'creationOptions': params.storage['creationOptions'],
             'metadataOptions': self.extra_metadata,
-            'noData': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+            # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+            'noData': 'none'
         }
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
@@ -248,7 +245,6 @@ class ConvertGeotiff:
             self.exportStoragePreview(geotiff)
 
         return geotiff
-
 
     def exportOutline(self, file_ds):
         '''
@@ -288,7 +284,8 @@ class ConvertGeotiff:
         # Final vector file
         gdaloutput = '{}.geojson'.format(self.outputFilename)
 
-        gdaloutput = '{}/{}'.format(params.outlines['output_folder'], gdaloutput)
+        gdaloutput = '{}/{}'.format(
+            params.outlines['output_folder'], gdaloutput)
 
         print('Exporting outline {}'.format(gdaloutput))
 
@@ -313,7 +310,8 @@ class ConvertGeotiff:
             # Only keep bigger polygons
             if area > params.outlines['minimum_area']:
                 print('Polygon area in m2:', area)
-                biggerGeoms.append(geom.Clone())  # Clone to prevent multiiple GDAL bugs
+                # Clone to prevent multiiple GDAL bugs
+                biggerGeoms.append(geom.Clone())
 
         tmp_layer = None
         geom = None
@@ -321,9 +319,9 @@ class ConvertGeotiff:
         # Convert mutiples Polygons to an unique MultiPolygon
         mergedGeom = ogr.Geometry(ogr.wkbMultiPolygon)
 
-        for geom in biggerGeoms:                      
-            mergedGeom.AddGeometryDirectly(geom)  
-        
+        for geom in biggerGeoms:
+            mergedGeom.AddGeometryDirectly(geom)
+
         # Use this to fix some geometry errors
         mergedGeom = mergedGeom.Buffer(params.outlines['buffer'])
 
@@ -377,7 +375,6 @@ class ConvertGeotiff:
         # Delete temp file
         del tmpGdaloutput
 
-
     def createOverviews(self, ds):
         '''
         Overviews are duplicate versions of your original data, but resampled to a lower resolution
@@ -387,31 +384,30 @@ class ConvertGeotiff:
         '''
         ds.BuildOverviews("AVERAGE", [2, 4, 8, 16, 32, 64, 128, 256])
 
-
-    def exportJSONdata(self,ds):
+    def exportJSONdata(self, ds):
         '''
         Export a JSON file
         '''
         outputJSONFilename = '{}.json'.format(self.outputFilename)
 
-        gdaloutput = '{}/{}'.format(params.storageJSONdata['output_folder'], outputJSONFilename)
-        
+        gdaloutput = '{}/{}'.format(
+            params.storageJSONdata['output_folder'], outputJSONFilename)
+
         print('Exporting JSON data {}'.format(gdaloutput))
-        
-        #https://gdal.org/python/osgeo.gdal-module.html#InfoOptions
+
+        # https://gdal.org/python/osgeo.gdal-module.html#InfoOptions
 
         kwargs = {
-            'allMetadata':True,
-            'format':'json'
+            'allMetadata': True,
+            'format': 'json'
         }
 
-        data = gdal.Info(ds,**kwargs)
-        
-        file = open(gdaloutput,'w')
-        json.dump(data,file)
-        
-        file.close()
+        data = gdal.Info(ds, **kwargs)
 
+        file = open(gdaloutput, 'w')
+        json.dump(data, file)
+
+        file.close()
 
     def exportStoragePreview(self, geotiff):
 
@@ -419,10 +415,10 @@ class ConvertGeotiff:
         # so this creates an extra file that we don't need (...aux.xml)
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
 
-
         outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
 
-        gdaloutput = '{}/{}'.format(params.storagePreview['output_folder'], outputPreviewFilename)
+        gdaloutput = '{}/{}'.format(
+            params.storagePreview['output_folder'], outputPreviewFilename)
 
         print('Exporting preview {}'.format(gdaloutput))
 
@@ -430,14 +426,14 @@ class ConvertGeotiff:
             'format': params.storagePreview['format'],
             'width': params.storagePreview['width'],  # px
             'creationOptions': params.storagePreview['creationOptions'],
-            'noData': 'none' # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+            # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+            'noData': 'none'
         }
 
         gdal.Translate(gdaloutput, geotiff, **kwargs)
 
         # reenable the internal metadata
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
-
 
 
 ConvertGeotiff()
