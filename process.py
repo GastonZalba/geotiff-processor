@@ -28,6 +28,7 @@ class ConvertGeotiff:
     https://gdal.org/tutorials/raster_api_tut.html
     https://gdal.org/python/osgeo.gdal-module.html
     https://gdal.org/api/python.html
+
     '''
 
     def __init__(self):
@@ -80,16 +81,34 @@ class ConvertGeotiff:
 
                 ok = "MapId" in file
 
-                # Random hash to be used as the map id
-                # https://docs.python.org/3/library/secrets.html
+                # Number of bands
+                self.bandas = file_ds.RasterCount          
+                self.ultimaBanda = file_ds.GetRasterBand(self.bandas)
+                self.tieneCanalAlfa = (self.ultimaBanda.GetColorInterpretation() == 6)  #link
+                self.noDataValue = self.ultimaBanda.GetNoDataValue()  # take any band
+                
+                if(self.bandas <= 2):
+                    self.isDsm = True
+                    
 
-                self.mapId = removeExtension(file.split(
-                    'MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
+                    self.mapId = removeExtension(
+                        file.split('MapId-')[1].split('_dsm')[0]) if ok else secrets.token_hex(nbytes=6)
+
+                else:
+
+                    # Random hash to be used as the map id
+                    # https://docs.python.org/3/library/secrets.html
+
+                    self.mapId = removeExtension(file.split(
+                        'MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
 
                 self.registroid = file.split(
                     "_")[0] if ok else self.cleanFilename(removeExtension(file))
 
                 self.outputFilename = f'{self.registroid}{params.filename_prefix}{self.mapId}'
+
+                if(self.isDsm):
+                    self.outputFilename = f'{self.outputFilename}{params.dsm_subfix}'
 
                 # File GSD
                 gt = file_ds.GetGeoTransform()
@@ -120,7 +139,6 @@ class ConvertGeotiff:
 
                 print('Exporting geoserver files...')
                 self.exportGeoserverFiles(file_ds, file)
-
                 # Once we're done, close properly the dataset
                 file_ds = None
 
@@ -181,21 +199,27 @@ class ConvertGeotiff:
         gdaloutput = '{}/{}'.format(
             params.geoserver['output_folder'], outputFilename)
 
+
+
         kwargs = {
             'format': 'GTiff',
-            'bandList': [1, 2, 3],
-            'maskBand': 4,
+            'bandList': [1, 2, 3] if not self.isDsm else [1],
             'xRes': params.geoserver['gsd']/100,
             'yRes': params.geoserver['gsd']/100,
             'creationOptions': params.geoserver['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-            'noData': 'none'
+            'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
+
+        if(not self.isDsm):
+            kwargs['maskBand'] = 4
+
+        #    self.changeKwargsDsm(kwargs, file_ds)
 
         fileToConvert = ds if tmpWarp else file_ds
 
-        if (params.outlines['enabled']):
+        if (params.outlines['enabled'] and not self.isDsm):
             self.exportOutline(fileToConvert)
 
         ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
@@ -221,24 +245,30 @@ class ConvertGeotiff:
 
         print('Exporting {}'.format(gdaloutput))
 
+
         kwargs = {
             'format': 'GTiff',
-            'bandList': [1, 2, 3],
-            'maskBand': 4,
+            'bandList': [1, 2, 3] if not self.isDsm else [1],
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
             'creationOptions': params.storage['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-            'noData': 'none'
+            'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
 
+        if(not self.isDsm):
+            kwargs['maskBand'] = 4
+            #self.changeKwargsDsm(kwargs, filepath)
+
+        self.dem = gdal.DEMProcessing("", gdaloutput, "color-relief", colorFilename="col.txt", format='MEM') #Test
+        
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
-        if(params.storage['exportJSON']):
+        if((params.storage['exportJSON']) and (not self.isDsm)):
             self.exportJSONdata(geotiff)
 
         if(params.storage['previews']):
@@ -372,7 +402,7 @@ class ConvertGeotiff:
 
         outDatasource = None
 
-        # Delete temp file
+        # Delete temp files
         del tmpGdaloutput
 
     def createOverviews(self, ds):

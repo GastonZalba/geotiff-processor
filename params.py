@@ -3,6 +3,7 @@ input_folder = 'input'
 output_folder = 'output'
 
 filename_prefix = '_MapId-'
+dsm_subfix = '_dsm'
 
 # To clean the output folder before starting
 clean_output_folder = True
@@ -22,8 +23,8 @@ geoserver = {
         'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
         'TFW=NO',
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
-        'PHOTOMETRIC=YCBCR',  # switches the photometric interpretation to the yCbCr color space, which allows a significant further reduction in output size with minimal changes on the images
-        'COMPRESS=JPEG',
+        'PHOTOMETRIC=MINISBLACK',  # switches the photometric interpretation to the yCbCr color space, which allows a significant further reduction in output size with minimal changes on the images
+        'COMPRESS=DEFLATE',
         # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
     ]
 }
@@ -39,8 +40,8 @@ storage = {
         'BIGTIFF=IF_NEEDED',
         'TFW=YES',
         'TILED=YES',
-        'PHOTOMETRIC=YCBCR',
-        'COMPRESS=JPEG'
+        'PHOTOMETRIC=MINISBLACK',
+        'COMPRESS=DEFLATE'
     ]
 }
 
@@ -55,7 +56,7 @@ storagePreview = {
     'format': 'JPEG',
     'creationOptions': [
         'PROGRESSIVE=ON', # better for web
-        'QUALITY=75'
+        'QUALITY=75',
     ]
 }
 
