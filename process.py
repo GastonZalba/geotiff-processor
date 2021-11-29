@@ -82,14 +82,14 @@ class ConvertGeotiff:
                 ok = "MapId" in file
 
                 # Number of bands
-                self.bandas = file_ds.RasterCount          
+                self.bandas = file_ds.RasterCount
                 self.ultimaBanda = file_ds.GetRasterBand(self.bandas)
-                self.tieneCanalAlfa = (self.ultimaBanda.GetColorInterpretation() == 6)  #link
+                self.tieneCanalAlfa = (
+                    self.ultimaBanda.GetColorInterpretation() == 6)  # link
                 self.noDataValue = self.ultimaBanda.GetNoDataValue()  # take any band
-                
+
                 if(self.bandas <= 2):
                     self.isDsm = True
-                    
 
                     self.mapId = removeExtension(
                         file.split('MapId-')[1].split('_dsm')[0]) if ok else secrets.token_hex(nbytes=6)
@@ -199,8 +199,6 @@ class ConvertGeotiff:
         gdaloutput = '{}/{}'.format(
             params.geoserver['output_folder'], outputFilename)
 
-
-
         kwargs = {
             'format': 'GTiff',
             'bandList': [1, 2, 3] if not self.isDsm else [1],
@@ -245,7 +243,6 @@ class ConvertGeotiff:
 
         print('Exporting {}'.format(gdaloutput))
 
-
         kwargs = {
             'format': 'GTiff',
             'bandList': [1, 2, 3] if not self.isDsm else [1],
@@ -259,10 +256,7 @@ class ConvertGeotiff:
 
         if(not self.isDsm):
             kwargs['maskBand'] = 4
-            #self.changeKwargsDsm(kwargs, filepath)
 
-        self.dem = gdal.DEMProcessing("", gdaloutput, "color-relief", colorFilename="col.txt", format='MEM') #Test
-        
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
         if (params.storage['overviews']):
@@ -460,7 +454,16 @@ class ConvertGeotiff:
             'noData': 'none'
         }
 
-        gdal.Translate(gdaloutput, geotiff, **kwargs)
+        kwargs2 = {
+            'format': 'GTiff',
+            'processing': 'color-relief',
+            'colorFilename': "colfinal.txt"
+        }
+
+        gdal.DEMProcessing(".\colorReliefTest.tif", geotiff, **kwargs2) #Test
+        gdal.DEMProcessing(".\hillshadeTest.tif", geotiff, "hillshade") #Test
+
+        gdal.Translate(gdaloutput, ".\colorReliefTest.tif", **kwargs)  #replace geotiff
 
         # reenable the internal metadata
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
