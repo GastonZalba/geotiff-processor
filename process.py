@@ -6,8 +6,10 @@ import tempfile
 import json
 from pathlib import Path
 from datetime import datetime
-
 import params as params
+import tempfile
+from osgeo_utils.gdal_calc import Calc
+
 from version import __version__
 
 try:
@@ -433,6 +435,35 @@ class ConvertGeotiff:
 
         file.close()
 
+    def processDSM(self, geotiff):
+        '''
+
+        Create a colored hillshade result from merging hillshade / DEM
+        '''
+
+        kwargsColorRelief = {
+            'format': params.storageDSMPreview['format'],
+            'colorFilename': params.storageDSMPreview['colorFilename'],
+            'processing': 'color-relief'
+        }
+
+        kwargsHillshade = {
+            'format': params.storageDSMPreview['format'],
+            'processing': 'hillshade'
+        }
+
+        # Using gdaldem to generate color-Relief and hillshade https://gdal.org/programs/gdaldem.html
+        gdal.DEMProcessing("colorReliefTest.tif", geotiff,
+                           **kwargsColorRelief)
+
+        gdal.DEMProcessing("hillshadeTest.tif", geotiff,
+                           **kwargsHillshade)
+
+        Calc(["uint8(((A / 255.)**(1/0.5)) * 255)"],
+             A='hillshadeTest.tif', outfile="gammaHillshade.tif")
+        Calc(["uint8(2*(A/255.)*(B/255.)*(A<128)*255 + B * (A>=128) )"], A="gammaHillshade.tif",
+             B="colorReliefTest.tif", outfile="coloredHillshade.tif", allBands="B")
+
     def exportStoragePreview(self, geotiff):
 
         # temporary disable the "auxiliary metadata" because JPG doesn't support it,
@@ -454,16 +485,12 @@ class ConvertGeotiff:
             'noData': 'none'
         }
 
-        kwargs2 = {
-            'format': 'GTiff',
-            'processing': 'color-relief',
-            'colorFilename': "colfinal.txt"
-        }
+        if(self.isDsm):
+            self.processDSM(geotiff)
+            geotiff = "coloredHillshade.tif"
 
-        gdal.DEMProcessing(".\colorReliefTest.tif", geotiff, **kwargs2) #Test
-        gdal.DEMProcessing(".\hillshadeTest.tif", geotiff, "hillshade") #Test
-
-        gdal.Translate(gdaloutput, ".\colorReliefTest.tif", **kwargs)  #replace geotiff
+        gdal.Translate(gdaloutput, geotiff,
+                       **kwargs)
 
         # reenable the internal metadata
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
