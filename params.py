@@ -60,6 +60,12 @@ storagePreview = {
     ]
 }
 
+storageDSMPreview = {
+    'output_folder': output_folder + '/storage/preview_dsm',  #Next imp
+    'format':'GTiff',
+    'colorFilename': 'colfinal.txt'  # dsm_style.qml converted to .txt
+}
+
 outlines = {
     'enabled': True,
     'output_folder': output_folder + '/outlines',
