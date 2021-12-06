@@ -3,7 +3,6 @@ input_folder = 'input'
 output_folder = 'output'
 
 filename_prefix = '_MapId-'
-dsm_subfix = '_dsm'
 
 # To clean the output folder before starting
 clean_output_folder = True
@@ -29,6 +28,10 @@ geoserver = {
     ]
 }
 
+geoserverDSM = {
+    'output_folder': output_folder + '/geoserver/geoserver_dsm',
+}
+
 storage = {
     'output_folder': output_folder + '/storage',
     'gsd': None,  # None to use original | cm
@@ -41,7 +44,7 @@ storage = {
         'TFW=YES',
         'TILED=YES',
         'PHOTOMETRIC=MINISBLACK',
-        'COMPRESS=DEFLATE'
+        'COMPRESS=DEFLATE',
     ]
 }
 
@@ -55,23 +58,23 @@ storagePreview = {
     # https://gdal.org/drivers/raster/jpeg.html
     'format': 'JPEG',
     'creationOptions': [
-        'PROGRESSIVE=ON', # better for web
+        'PROGRESSIVE=ON',  # better for web
         'QUALITY=75',
     ]
 }
 
 storageDSMPreview = {
-    'output_folder': output_folder + '/storage/preview_dsm',  #Next imp
-    'format':'GTiff',
-    'colorFilename': 'colfinal.txt'  # dsm_style.qml converted to .txt
+    'output_folder': output_folder + '/storage/preview_dsm',
+    'format': 'GTiff',
+    'colorFilename': 'colfinal2.txt'  # dsm_style.qml converted to .txt
 }
 
 outlines = {
     'enabled': True,
-    'output_folder': output_folder + '/outlines',
+    'output_folder': output_folder + '/storage/outlines',
 
     # Polygons bigger than this area arepreserved in the outlines
-    'minimum_area': 10, # m2
+    'minimum_area': 10,  # m2
 
     # Use to simplify the geometry
     # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Simplify
