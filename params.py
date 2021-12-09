@@ -29,7 +29,7 @@ geoserver = {
 }
 
 geoserverDSM = {
-    'output_folder': output_folder + '/geoserver/geoserver_dsm',
+    'output_folder': output_folder + '/geoserver/dsm',
 }
 
 storage = {
@@ -46,6 +46,10 @@ storage = {
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
     ]
+}
+
+storageDSM = {
+    'output_folder': output_folder + '/storage/dsm'
 }
 
 storageJSONdata = {
@@ -66,7 +70,7 @@ storagePreview = {
 storageDSMPreview = {
     'output_folder': output_folder + '/storage/preview_dsm',
     'format': 'GTiff',
-    'colorFilename': 'colfinal2.txt'  # dsm_style.qml converted to .txt
+    'colorFilename': 'colorPalette.txt'  # dsm_style.qml converted to .txt
 }
 
 outlines = {
