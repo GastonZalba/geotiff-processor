@@ -447,17 +447,16 @@ class ConvertGeotiff:
         stats = srcband.GetStatistics(True, True)
 
         # Print the min, max based on stats index
-        minimum = stats[0]
-        maximum = stats[1]
+        min = stats[0]
+        max = stats[1]
 
         values = []
-        if(minimum < 0):
-            minimum = minimum * -1
+        if(min < 0):
+            min = min * -1
 
-        trimmedMin = minimum * 1.22
+        trimmedMin = min * 1.22
 
-        trimmedMax = maximum - (maximum * 0.05) if max < 10 else maximum - \
-            (maximum * 0.35)  # Test value 10
+        trimmedMax = max - (max * 0.05) if max < 10 else max - (max * 0.35)  # Test value 10
 
         per = (trimmedMax-trimmedMin)/7
 
