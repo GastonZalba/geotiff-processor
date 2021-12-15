@@ -6,6 +6,8 @@ import tempfile
 import json
 from pathlib import Path
 from datetime import datetime
+
+import numpy as np
 import params as params
 import tempfile
 from osgeo_utils.gdal_calc import Calc
@@ -13,7 +15,7 @@ from osgeo_utils.gdal_calc import Calc
 from version import __version__
 
 try:
-    from osgeo import gdal, osr, ogr
+    from osgeo import gdal, osr, ogr, gdal_array
 except:
     sys.exit('ERROR: osgeo module was not found')
 
@@ -441,6 +443,8 @@ class ConvertGeotiff:
         Create a color palette to use as a .txt, considering the elevation values
         '''
 
+        array = geotiff.GetRasterBand(1).ReadAsArray()
+
         srcband = geotiff.GetRasterBand(1)
 
         # Get raster statistics
@@ -451,21 +455,29 @@ class ConvertGeotiff:
         max = stats[1]
 
         values = []
-        if(min < 0):
-            min = min * -1
+       
+        if(min < 0):           #Negative value Test
+            min = min + ((min * - 1) * 0.5)
 
         trimmedMin = min * 1.22
 
-        trimmedMax = max - (max * 0.05) if max < 10 else max - (max * 0.35)  # Test value 10
+        trimmedMax = max - (max * 0.05) if max < 10 else np.percentile(array,95)  
 
         per = (trimmedMax-trimmedMin)/7
 
-        while(trimmedMin < trimmedMax):
+
+        cont = 1
+        while(cont <= 7):
+            if(cont == 4 | cont == 6):
+                trimmedMin = trimmedMin + (per * 2)
+            if(cont == 5 | cont == 7):
+                trimmedMin = trimmedMin + (per * 3)
             values.append(trimmedMin)
             trimmedMin = trimmedMin + per
+            cont+=1
 
-        palette = ["0 0 187 255", "81 222 222 255", "87 237 90 255",
-                   "68 236 53 255", "223 227 1 255", "255 134 2 255", "178 0 6 255"]  # bcgyor
+        palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
+                   "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
 
         f = open('colorPalette.txt', 'w')
 
@@ -483,6 +495,12 @@ class ConvertGeotiff:
 
         Create a colored hillshade result from merging hillshade / DEM
         '''
+
+        tmpColorRelief = '{}\\colorRelief.tif'.format(tempfile.gettempdir())
+        tmpHillshade = '{}\\hillshade.tif'.format(tempfile.gettempdir())
+        tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(tempfile.gettempdir())
+        tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(tempfile.gettempdir())
+
         self.colorDSM(geotiff)
 
         kwargsColorRelief = {
@@ -497,21 +515,23 @@ class ConvertGeotiff:
             'azimuth': '90'
         }
 
+
         # Using gdaldem to generate color-Relief and hillshade https://gdal.org/programs/gdaldem.html
-        gdal.DEMProcessing("colorReliefTest.tif", geotiff,
+        gdal.DEMProcessing(tmpColorRelief , geotiff,
                            **kwargsColorRelief)
 
-        gdal.DEMProcessing("hillshadeTest.tif", geotiff,
+        gdal.DEMProcessing(tmpHillshade , geotiff,
                            **kwargsHillshade)
 
-        Calc(["uint8(((A / 255.)**(1/0.5)) * 255)"],
-             A='hillshadeTest.tif', outfile="gammaHillshade.tif")
-        Calc(["uint8(2*(A/255.)*(B/255.)*(A<128)*255 + B * (A>=128) )"], A="gammaHillshade.tif",
-             B="colorReliefTest.tif", outfile="coloredHillshade.tif", allBands="B")
+        Calc(["uint8(((A/255.)**(1/0.5))*255)"],
+             A=tmpHillshade, outfile=tmpGammaHillshade)
+        Calc(["uint8(2*(A/255.)*(B/255.)*(A<128) + B * (A>=128))"], A= tmpGammaHillshade,
+             B= tmpColorRelief, outfile= tmpColoredHillshade, allBands="B")
 
-        os.remove("gammaHillshade.tif")         #
-        os.remove("colorReliefTest.tif")        # Next impl: tmpfiles
-        os.remove("hillshadeTest.tif")          #
+        os.remove(tmpColorRelief)
+        os.remove(tmpHillshade)
+        os.remove(tmpGammaHillshade)
+
 
     def exportStoragePreview(self, geotiff):
 
@@ -529,23 +549,25 @@ class ConvertGeotiff:
         kwargs = {
             'format': params.storagePreview['format'],
             'width': params.storagePreview['width'],  # px
-            # 'creationOptions': params.storagePreview['creationOptions'],
+            'creationOptions': params.storagePreview['creationOptions'],
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             'noData': 'none'
         }
 
-        if(self.isDsm):
-            kwargs['format'] = "Gtiff"
+        if(self.isDsm):   # Test
+            output = '{}\\probar.tif'.format(tempfile.gettempdir())
+            gdal.Warp(output, geotiff, xRes=0.3, yRes=0.3)
+            file_ds = gdal.Open(output, gdal.GA_ReadOnly)
+            self.processDSM(file_ds)
+            file_ds = None
+            geotiff = '{}\\coloredHillshade.tif'.format(tempfile.gettempdir())
 
         gdal.Translate(gdaloutput, geotiff,
                        **kwargs)
 
-        if(self.isDsm):   # Test
-            self.processDSM(geotiff)
-            geotiff = "coloredHillshade.tif"
-            kwargs['format'] = 'jpeg'
-            kwargs['creationOptions'] = params.storagePreview['creationOptions']
-            gdal.Translate(gdaloutput, geotiff, **kwargs)
+        if(self.isDsm):
+            os.remove(output)
+            os.remove(geotiff)
 
         # reenable the internal metadata
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
