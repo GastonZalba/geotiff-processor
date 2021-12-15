@@ -438,7 +438,7 @@ class ConvertGeotiff:
 
         file.close()
 
-    def colorDSM(self, geotiff):
+    def getColorDSM(self, geotiff):
         '''
         Create a color palette to use as a .txt, considering the elevation values
         '''
@@ -455,16 +455,16 @@ class ConvertGeotiff:
         max = stats[1]
 
         values = []
-       
-        if(min < 0):           #Negative value Test
+
+        if(min < 0):
             min = min + ((min * - 1) * 0.5)
 
         trimmedMin = min * 1.22
 
-        trimmedMax = max - (max * 0.05) if max < 10 else np.percentile(array,95)  
+        trimmedMax = max - \
+            (max * 0.05) if max < 10 else np.percentile(array, 95)
 
         per = (trimmedMax-trimmedMin)/7
-
 
         cont = 1
         while(cont <= 7):
@@ -474,13 +474,13 @@ class ConvertGeotiff:
                 trimmedMin = trimmedMin + (per * 3)
             values.append(trimmedMin)
             trimmedMin = trimmedMin + per
-            cont+=1
+            cont += 1
 
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
                    "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
 
         palettePath = '{}\\colorPalette.txt'.format(tempfile.gettempdir())
-        
+
         f = open(palettePath, 'w')
 
         i = 0
@@ -492,24 +492,26 @@ class ConvertGeotiff:
 
         f.close()
 
-    def processDSM(self, geotiff):
+        return palettePath
+
+    def getColoredHillshade(self, geotiff):
         '''
 
         Create a colored hillshade result from merging hillshade / DEM
         '''
 
-        tmpColorRelief = '{}\\colorRelief.tif'.format(tempfile.gettempdir())
-        tmpHillshade = '{}\\hillshade.tif'.format(tempfile.gettempdir())
-        tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(tempfile.gettempdir())
-        tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(tempfile.gettempdir())
+        TEMP_FOLDER = tempfile.gettempdir()
 
-        self.colorDSM(geotiff)
+        tmpColorRelief = '{}\\colorRelief.tif'.format(TEMP_FOLDER)
+        tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
+        tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(TEMP_FOLDER)
+        tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(TEMP_FOLDER)
 
-        colorPalettePath = '{}\\colorPalette.txt'.format(tempfile.gettempdir())
+        colorPalette = self.getColorDSM(geotiff)
 
         kwargsColorRelief = {
             'format': params.storageDSMPreview['format'],
-            'colorFilename': colorPalettePath,
+            'colorFilename': colorPalette,
             'processing': 'color-relief'
         }
 
@@ -519,24 +521,23 @@ class ConvertGeotiff:
             'azimuth': '90'
         }
 
-
         # Using gdaldem to generate color-Relief and hillshade https://gdal.org/programs/gdaldem.html
-        gdal.DEMProcessing(tmpColorRelief , geotiff,
+        gdal.DEMProcessing(tmpColorRelief, geotiff,
                            **kwargsColorRelief)
 
-        gdal.DEMProcessing(tmpHillshade , geotiff,
+        gdal.DEMProcessing(tmpHillshade, geotiff,
                            **kwargsHillshade)
 
         Calc(["uint8(((A/255.)**(1/0.5))*255)"],
              A=tmpHillshade, outfile=tmpGammaHillshade)
-        Calc(["uint8(2*(A/255.)*(B/255.)*(A<128) + B * (A>=128))"], A= tmpGammaHillshade,
-             B= tmpColorRelief, outfile= tmpColoredHillshade, allBands="B")
+        Calc(["uint8(2*(A/255.)*(B/255.)*(A<128) + B * (A>=128))"], A=tmpGammaHillshade,
+             B=tmpColorRelief, outfile=tmpColoredHillshade, allBands="B")
 
         os.remove(tmpColorRelief)
         os.remove(tmpHillshade)
         os.remove(tmpGammaHillshade)
-        os.remove(colorPalettePath)
-        
+        os.remove(colorPalette)
+
         return tmpColoredHillshade
 
     def exportStoragePreview(self, geotiff):
@@ -560,11 +561,11 @@ class ConvertGeotiff:
             'noData': 'none'
         }
 
-        if(self.isDsm):   # Test
-            output = '{}\\probar.tif'.format(tempfile.gettempdir())
+        if(self.isDsm):
+            output = '{}\\lowres.tif'.format(tempfile.gettempdir())
             gdal.Warp(output, geotiff, xRes=0.3, yRes=0.3)
             file_ds = gdal.Open(output, gdal.GA_ReadOnly)
-            geotiff = self.processDSM(file_ds)
+            geotiff = self.getColoredHillshade(file_ds)
             file_ds = None
 
         gdal.Translate(gdaloutput, geotiff,
