@@ -207,7 +207,7 @@ class ConvertGeotiff:
             'bandList': [1, 2, 3] if not self.isDsm else [1],
             'xRes': params.geoserver['gsd']/100,
             'yRes': params.geoserver['gsd']/100,
-            'creationOptions': params.geoserver['creationOptions'],
+            'creationOptions': params.geoserver['creationOptions'] if not self.isDsm else params.geoserverDSM['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
@@ -253,7 +253,7 @@ class ConvertGeotiff:
             'bandList': [1, 2, 3] if not self.isDsm else [1],
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
-            'creationOptions': params.storage['creationOptions'],
+            'creationOptions': params.storage['creationOptions'] if not self.isDsm else params.storageDSM['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
@@ -479,7 +479,9 @@ class ConvertGeotiff:
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
                    "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
 
-        f = open('colorPalette.txt', 'w')
+        palettePath = '{}\\colorPalette.txt'.format(tempfile.gettempdir())
+        
+        f = open(palettePath, 'w')
 
         i = 0
         while i < len(palette):
@@ -503,9 +505,11 @@ class ConvertGeotiff:
 
         self.colorDSM(geotiff)
 
+        colorPalettePath = '{}\\colorPalette.txt'.format(tempfile.gettempdir())
+
         kwargsColorRelief = {
             'format': params.storageDSMPreview['format'],
-            'colorFilename': params.storageDSMPreview['colorFilename'],
+            'colorFilename': colorPalettePath,
             'processing': 'color-relief'
         }
 
@@ -531,7 +535,9 @@ class ConvertGeotiff:
         os.remove(tmpColorRelief)
         os.remove(tmpHillshade)
         os.remove(tmpGammaHillshade)
-
+        os.remove(colorPalettePath)
+        
+        return tmpColoredHillshade
 
     def exportStoragePreview(self, geotiff):
 
@@ -558,9 +564,8 @@ class ConvertGeotiff:
             output = '{}\\probar.tif'.format(tempfile.gettempdir())
             gdal.Warp(output, geotiff, xRes=0.3, yRes=0.3)
             file_ds = gdal.Open(output, gdal.GA_ReadOnly)
-            self.processDSM(file_ds)
+            geotiff = self.processDSM(file_ds)
             file_ds = None
-            geotiff = '{}\\coloredHillshade.tif'.format(tempfile.gettempdir())
 
         gdal.Translate(gdaloutput, geotiff,
                        **kwargs)

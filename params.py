@@ -22,14 +22,23 @@ geoserver = {
         'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
         'TFW=NO',
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
-        'PHOTOMETRIC=MINISBLACK',  # switches the photometric interpretation to the yCbCr color space, which allows a significant further reduction in output size with minimal changes on the images
-        'COMPRESS=DEFLATE',
+        'PHOTOMETRIC=YCBCR',  # switches the photometric interpretation to the yCbCr color space, which allows a significant further reduction in output size with minimal changes on the images
+        'COMPRESS=JPEG',
         # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
     ]
 }
 
 geoserverDSM = {
     'output_folder': output_folder + '/geoserver/dsm',
+    'creationOptions': [
+        'JPEG_QUALITY=80',
+        'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
+        'TFW=NO',
+        'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
+        'PHOTOMETRIC=MINISBLACK',
+        'COMPRESS=DEFLATE',
+        # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
+    ]
 }
 
 storage = {
@@ -43,13 +52,22 @@ storage = {
         'BIGTIFF=IF_NEEDED',
         'TFW=YES',
         'TILED=YES',
-        'PHOTOMETRIC=MINISBLACK',
-        'COMPRESS=DEFLATE',
+        'PHOTOMETRIC=YCBCR',
+        'COMPRESS=JPEG',
     ]
 }
 
 storageDSM = {
-    'output_folder': output_folder + '/storage/dsm'
+    'output_folder': output_folder + '/storage/dsm',
+    'creationOptions': [
+        'JPEG_QUALITY=80',
+        'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
+        'TFW=NO',
+        'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
+        'PHOTOMETRIC=MINISBLACK',
+        'COMPRESS=DEFLATE',
+        # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
+    ]
 }
 
 storageJSONdata = {
