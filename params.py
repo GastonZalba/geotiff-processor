@@ -32,7 +32,7 @@ geoserverDSM = {
     'output_folder': output_folder + '/geoserver/dsm',
     'creationOptions': [
         'JPEG_QUALITY=80',
-        'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
+        'BIGTIFF=YES',  # for files larger than 4 GB
         'TFW=NO',
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
@@ -61,8 +61,8 @@ storageDSM = {
     'output_folder': output_folder + '/storage/dsm',
     'creationOptions': [
         'JPEG_QUALITY=80',
-        'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
-        'TFW=NO',
+        'BIGTIFF=YES',  # for files larger than 4 GB
+        'TFW=YES',
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
