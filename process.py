@@ -19,6 +19,7 @@ try:
 except:
     sys.exit('ERROR: osgeo module was not found')
 
+TEMP_FOLDER = tempfile.gettempdir()
 
 def removeExtension(filename):
     return os.path.splitext(filename)[0]
@@ -499,8 +500,6 @@ class ConvertGeotiff:
 
         Create a colored hillshade result from merging hillshade / DEM
         '''
-
-        TEMP_FOLDER = tempfile.gettempdir()
 
         tmpColorRelief = '{}\\colorRelief.tif'.format(TEMP_FOLDER)
         tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
