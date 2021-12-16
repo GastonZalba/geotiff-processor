@@ -19,6 +19,7 @@ El script crea los siguientes archivos optimizados:
     - `PROJ_LIB`: '...\Python\Python37\Lib\site-packages\osgeo\data\proj'
     - Agregar a la variable `Path` la ruta '...\Python\Python37\Lib\site-packages\osgeo'
     - Chequear en consola `gdalinfo --version`
+- Instalar la librería Numpy mediante el comando  `pip install numpy`.
 
 ## Uso
 - Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`
