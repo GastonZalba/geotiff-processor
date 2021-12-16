@@ -2,11 +2,9 @@ import sys
 import os
 import secrets
 import shutil
-import tempfile
 import json
 from pathlib import Path
 from datetime import datetime
-
 import numpy as np
 import params as params
 import tempfile
@@ -192,7 +190,7 @@ class ConvertGeotiff:
                 'srcNodata': 'none'
             }
 
-            tmpWarp = tempfile.gettempdir() + "\\" + file
+            tmpWarp = TEMP_FOLDER + "\\" + file
             print('Converting EPSG:{} to EPSG:{}'.format(
                 self.epsg, params.geoserver['epsg']))
             # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
@@ -295,7 +293,7 @@ class ConvertGeotiff:
         tmpFilename = '{}.geojson'.format(self.outputFilename)
 
         # Temporary vector file
-        tmpGdaloutput = tempfile.gettempdir() + "\\" + tmpFilename
+        tmpGdaloutput = TEMP_FOLDER + "\\" + tmpFilename
 
         if os.path.exists(tmpGdaloutput):
             geoDriver.DeleteDataSource(tmpGdaloutput)
@@ -480,7 +478,7 @@ class ConvertGeotiff:
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
                    "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
 
-        palettePath = '{}\\colorPalette.txt'.format(tempfile.gettempdir())
+        palettePath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
 
         f = open(palettePath, 'w')
 
@@ -561,7 +559,7 @@ class ConvertGeotiff:
         }
 
         if(self.isDsm):
-            output = '{}\\lowres.tif'.format(tempfile.gettempdir())
+            output = '{}\\lowres.tif'.format(TEMP_FOLDER)
             gdal.Warp(output, geotiff, xRes=0.3, yRes=0.3)
             file_ds = gdal.Open(output, gdal.GA_ReadOnly)
             geotiff = self.getColoredHillshade(file_ds)
