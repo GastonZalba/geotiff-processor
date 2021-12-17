@@ -3,6 +3,7 @@ input_folder = 'input'
 output_folder = 'output'
 
 filename_prefix = '_MapId-'
+filename_suffix = '_dsm'
 
 # To clean the output folder before starting
 clean_output_folder = True
