@@ -13,11 +13,12 @@ from osgeo_utils.gdal_calc import Calc
 from version import __version__
 
 try:
-    from osgeo import gdal, osr, ogr, gdal_array
+    from osgeo import gdal, osr, ogr
 except:
     sys.exit('ERROR: osgeo module was not found')
 
 TEMP_FOLDER = tempfile.gettempdir()
+
 
 def removeExtension(filename):
     return os.path.splitext(filename)[0]
@@ -89,13 +90,13 @@ class ConvertGeotiff:
                         print(e)
                         sys.exit(1)
 
-                ok = "MapId" in file
+                ok = params.filename_prefix in file
 
                 # Number of bands
                 self.bandas = file_ds.RasterCount
                 self.ultimaBanda = file_ds.GetRasterBand(self.bandas)
                 self.tieneCanalAlfa = (
-                    self.ultimaBanda.GetColorInterpretation() == 6)  # link
+                    self.ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
                 self.noDataValue = self.ultimaBanda.GetNoDataValue()  # take any band
 
                 if(self.bandas <= 2):
@@ -104,13 +105,21 @@ class ConvertGeotiff:
                     # Random hash to be used as the map id
                     # https://docs.python.org/3/library/secrets.html
 
-                self.mapId = removeExtension(
-                    file.split('MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
+                if(self.isDsm):    # Generating output filename for DSM case
+                    self.mapId = removeExtension(file.split(
+                        'MapId-')[1].split('_dsm')[0]) if ok else secrets.token_hex(nbytes=6)
 
-                self.registroid = file.split(
-                    "_")[0] if ok else self.cleanFilename(removeExtension(file))
+                    self.registroid = file.split(
+                        'MapId-')[0] if ok else self.cleanFilename(removeExtension(file.split('_dsm')[0]))
+                else:
+                    self.mapId = removeExtension(
+                        file.split('MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
 
-                self.outputFilename = f'{self.registroid}{params.filename_prefix}{self.mapId}'
+                    self.registroid = file.split(
+                        "_")[0] if ok else self.cleanFilename(removeExtension(file))
+
+                self.output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
+                self.outputFilename = self.output if not self.isDsm else f'{self.output}{params.filename_suffix}'
 
                 # File GSD
                 gt = file_ds.GetGeoTransform()
