@@ -99,8 +99,7 @@ class ConvertGeotiff:
                     self.ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
                 self.noDataValue = self.ultimaBanda.GetNoDataValue()  # take any band
 
-                if(self.bandas <= 2):
-                    self.isDsm = True
+                self.isDsm = self.bandas <= 2
 
                     # Random hash to be used as the map id
                     # https://docs.python.org/3/library/secrets.html
@@ -476,13 +475,13 @@ class ConvertGeotiff:
 
         cont = 1
         while(cont <= 7):
-            if(cont == 4 | cont == 6):
-                trimmedMin = trimmedMin + (per * 2)
-            if(cont == 5 | cont == 7):
-                trimmedMin = trimmedMin + (per * 3)
-            values.append(trimmedMin)
-            trimmedMin = trimmedMin + per
-            cont += 1
+          if(cont == 4 | cont == 6):
+            trimmedMin = trimmedMin + per 
+          if(cont == 5 | cont == 7):
+            trimmedMin = trimmedMin + (per * 2)
+          values.append(trimmedMin)
+          trimmedMin = trimmedMin + per
+          cont += 1
 
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
                    "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
