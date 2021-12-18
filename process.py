@@ -2,18 +2,22 @@ import sys
 import os
 import secrets
 import shutil
-import tempfile
 import json
 from pathlib import Path
 from datetime import datetime
-
+import numpy as np
 import params as params
+import tempfile
+from osgeo_utils.gdal_calc import Calc
+
 from version import __version__
 
 try:
     from osgeo import gdal, osr, ogr
 except:
     sys.exit('ERROR: osgeo module was not found')
+
+TEMP_FOLDER = tempfile.gettempdir()
 
 
 def removeExtension(filename):
@@ -28,6 +32,7 @@ class ConvertGeotiff:
     https://gdal.org/tutorials/raster_api_tut.html
     https://gdal.org/python/osgeo.gdal-module.html
     https://gdal.org/api/python.html
+
     '''
 
     def __init__(self):
@@ -40,6 +45,7 @@ class ConvertGeotiff:
         gdal.UseExceptions()
 
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
+        self.isDsm = False
         self.checkDirectories()
         self.processTifs()
 
@@ -62,6 +68,12 @@ class ConvertGeotiff:
             parents=True, exist_ok=True)
         Path(params.outlines['output_folder']).mkdir(
             parents=True, exist_ok=True)
+        Path(params.geoserverDSM['output_folder']).mkdir(
+            parents=True, exist_ok=True)
+        Path(params.storageDSM['output_folder']).mkdir(
+            parents=True, exist_ok=True)
+        Path(params.storageDSMPreview['output_folder']).mkdir(
+            parents=True, exist_ok=True)
 
     def processTifs(self):
 
@@ -78,18 +90,35 @@ class ConvertGeotiff:
                         print(e)
                         sys.exit(1)
 
-                ok = "MapId" in file
+                ok = params.filename_prefix in file
 
-                # Random hash to be used as the map id
-                # https://docs.python.org/3/library/secrets.html
+                # Number of bands
+                self.bandas = file_ds.RasterCount
+                self.ultimaBanda = file_ds.GetRasterBand(self.bandas)
+                self.tieneCanalAlfa = (
+                    self.ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
+                self.noDataValue = self.ultimaBanda.GetNoDataValue()  # take any band
 
-                self.mapId = removeExtension(file.split(
-                    'MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
+                self.isDsm = self.bandas <= 2
 
-                self.registroid = file.split(
-                    "_")[0] if ok else self.cleanFilename(removeExtension(file))
+                    # Random hash to be used as the map id
+                    # https://docs.python.org/3/library/secrets.html
 
-                self.outputFilename = f'{self.registroid}{params.filename_prefix}{self.mapId}'
+                if(self.isDsm):    # Generating output filename for DSM case
+                    self.mapId = removeExtension(file.split(
+                        'MapId-')[1].split('_dsm')[0]) if ok else secrets.token_hex(nbytes=6)
+
+                    self.registroid = file.split(
+                        'MapId-')[0] if ok else self.cleanFilename(removeExtension(file.split('_dsm')[0]))
+                else:
+                    self.mapId = removeExtension(
+                        file.split('MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
+
+                    self.registroid = file.split(
+                        "_")[0] if ok else self.cleanFilename(removeExtension(file))
+
+                self.output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
+                self.outputFilename = self.output if not self.isDsm else f'{self.output}{params.filename_suffix}'
 
                 # File GSD
                 gt = file_ds.GetGeoTransform()
@@ -120,7 +149,6 @@ class ConvertGeotiff:
 
                 print('Exporting geoserver files...')
                 self.exportGeoserverFiles(file_ds, file)
-
                 # Once we're done, close properly the dataset
                 file_ds = None
 
@@ -170,7 +198,7 @@ class ConvertGeotiff:
                 'srcNodata': 'none'
             }
 
-            tmpWarp = tempfile.gettempdir() + "\\" + file
+            tmpWarp = TEMP_FOLDER + "\\" + file
             print('Converting EPSG:{} to EPSG:{}'.format(
                 self.epsg, params.geoserver['epsg']))
             # https://gis.stackexchange.com/questions/260502/using-gdalwarp-to-generate-a-binary-mask
@@ -178,24 +206,28 @@ class ConvertGeotiff:
 
         outputFilename = '{}.tif'.format(self.outputFilename)
 
-        gdaloutput = '{}/{}'.format(
-            params.geoserver['output_folder'], outputFilename)
+        gdaloutput = params.geoserver['output_folder'] if not self.isDsm else params.geoserverDSM['output_folder']
+        gdaloutput = '{}/{}'.format(gdaloutput, outputFilename)
 
         kwargs = {
             'format': 'GTiff',
-            'bandList': [1, 2, 3],
-            'maskBand': 4,
+            'bandList': [1, 2, 3] if not self.isDsm else [1],
             'xRes': params.geoserver['gsd']/100,
             'yRes': params.geoserver['gsd']/100,
-            'creationOptions': params.geoserver['creationOptions'],
+            'creationOptions': params.geoserver['creationOptions'] if not self.isDsm else params.geoserverDSM['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-            'noData': 'none'
+            'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
+
+        if(not self.isDsm):
+            kwargs['maskBand'] = 4
+
+        #    self.changeKwargsDsm(kwargs, file_ds)
 
         fileToConvert = ds if tmpWarp else file_ds
 
-        if (params.outlines['enabled']):
+        if (params.outlines['enabled'] and not self.isDsm):
             self.exportOutline(fileToConvert)
 
         ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
@@ -216,29 +248,33 @@ class ConvertGeotiff:
 
         outputFilename = '{}.tif'.format(self.outputFilename)
 
+        gdaloutput = params.storage['output_folder'] if not self.isDsm else params.storageDSM['output_folder']
+
         gdaloutput = '{}/{}'.format(
-            params.storage['output_folder'], outputFilename)
+            gdaloutput, outputFilename)
 
         print('Exporting {}'.format(gdaloutput))
 
         kwargs = {
             'format': 'GTiff',
-            'bandList': [1, 2, 3],
-            'maskBand': 4,
+            'bandList': [1, 2, 3] if not self.isDsm else [1],
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
-            'creationOptions': params.storage['creationOptions'],
+            'creationOptions': params.storage['creationOptions'] if not self.isDsm else params.storageDSM['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-            'noData': 'none'
+            'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
+
+        if(not self.isDsm):
+            kwargs['maskBand'] = 4
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
-        if(params.storage['exportJSON']):
+        if((params.storage['exportJSON']) and (not self.isDsm)):
             self.exportJSONdata(geotiff)
 
         if(params.storage['previews']):
@@ -265,7 +301,7 @@ class ConvertGeotiff:
         tmpFilename = '{}.geojson'.format(self.outputFilename)
 
         # Temporary vector file
-        tmpGdaloutput = tempfile.gettempdir() + "\\" + tmpFilename
+        tmpGdaloutput = TEMP_FOLDER + "\\" + tmpFilename
 
         if os.path.exists(tmpGdaloutput):
             geoDriver.DeleteDataSource(tmpGdaloutput)
@@ -372,7 +408,7 @@ class ConvertGeotiff:
 
         outDatasource = None
 
-        # Delete temp file
+        # Delete temp files
         del tmpGdaloutput
 
     def createOverviews(self, ds):
@@ -409,6 +445,106 @@ class ConvertGeotiff:
 
         file.close()
 
+    def getColorDSM(self, geotiff):
+        '''
+        Create a color palette to use as a .txt, considering the elevation values
+        '''
+
+        array = geotiff.GetRasterBand(1).ReadAsArray()
+
+        srcband = geotiff.GetRasterBand(1)
+
+        # Get raster statistics
+        stats = srcband.GetStatistics(True, True)
+
+        # Print the min, max based on stats index
+        min = stats[0]
+        max = stats[1]
+
+        values = []
+
+        if(min < 0):
+            min = min + ((min * - 1) * 0.5)
+
+        trimmedMin = min * 1.22
+
+        trimmedMax = max - \
+            (max * 0.05) if max < 10 else np.percentile(array, 95)
+
+        per = (trimmedMax-trimmedMin)/7
+
+        cont = 1
+        while(cont <= 7):
+          if(cont == 4 | cont == 6):
+            trimmedMin = trimmedMin + per 
+          if(cont == 5 | cont == 7):
+            trimmedMin = trimmedMin + (per * 2)
+          values.append(trimmedMin)
+          trimmedMin = trimmedMin + per
+          cont += 1
+
+        palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
+                   "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
+
+        palettePath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
+
+        f = open(palettePath, 'w')
+
+        i = 0
+        while i < len(palette):
+            # Generating a color palette merging two structures
+            merge = str(values[i]) + ' ' + str(palette[i])
+            i += 1
+            f.write(merge + '\n')
+
+        f.close()
+
+        return palettePath
+
+    def getColoredHillshade(self, geotiff):
+        '''
+
+        Create a colored hillshade result from merging hillshade / DEM
+        '''
+
+        tmpColorRelief = '{}\\colorRelief.tif'.format(TEMP_FOLDER)
+        tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
+        tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(TEMP_FOLDER)
+        tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(TEMP_FOLDER)
+
+        colorPalette = self.getColorDSM(geotiff)
+
+        kwargsColorRelief = {
+            'format': params.storageDSMPreview['format'],
+            'colorFilename': colorPalette,
+            'processing': 'color-relief'
+        }
+
+        kwargsHillshade = {
+            'format': params.storageDSMPreview['format'],
+            'processing': 'hillshade',
+            'azimuth': '90'
+        }
+
+        # Using gdaldem to generate color-Relief and hillshade https://gdal.org/programs/gdaldem.html
+        gdal.DEMProcessing(tmpColorRelief, geotiff,
+                           **kwargsColorRelief)
+
+        gdal.DEMProcessing(tmpHillshade, geotiff,
+                           **kwargsHillshade)
+
+        Calc(["uint8(((A/255.)**(1/0.5))*255)"],
+             A=tmpHillshade, outfile=tmpGammaHillshade)
+        Calc(["uint8(2*(A/255.)*(B/255.)*(A<128) + B * (A>=128))"], A=tmpGammaHillshade,
+             B=tmpColorRelief, outfile=tmpColoredHillshade, allBands="B")
+
+        os.remove(tmpColorRelief)
+        os.remove(tmpHillshade)
+        os.remove(tmpGammaHillshade)
+        os.remove(colorPalette)
+
+        return tmpColoredHillshade
+
     def exportStoragePreview(self, geotiff):
 
         # temporary disable the "auxiliary metadata" because JPG doesn't support it,
@@ -417,8 +553,8 @@ class ConvertGeotiff:
 
         outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
 
-        gdaloutput = '{}/{}'.format(
-            params.storagePreview['output_folder'], outputPreviewFilename)
+        gdaloutput = params.storagePreview['output_folder'] if not self.isDsm else params.storageDSMPreview['output_folder']
+        gdaloutput = '{}/{}'.format(gdaloutput, outputPreviewFilename)
 
         print('Exporting preview {}'.format(gdaloutput))
 
@@ -430,7 +566,19 @@ class ConvertGeotiff:
             'noData': 'none'
         }
 
-        gdal.Translate(gdaloutput, geotiff, **kwargs)
+        if(self.isDsm):
+            output = '{}\\lowres.tif'.format(TEMP_FOLDER)
+            gdal.Warp(output, geotiff, xRes=0.3, yRes=0.3)
+            file_ds = gdal.Open(output, gdal.GA_ReadOnly)
+            geotiff = self.getColoredHillshade(file_ds)
+            file_ds = None
+
+        gdal.Translate(gdaloutput, geotiff,
+                       **kwargs)
+
+        if(self.isDsm):
+            os.remove(output)
+            os.remove(geotiff)
 
         # reenable the internal metadata
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
