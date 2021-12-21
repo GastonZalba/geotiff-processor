@@ -460,28 +460,28 @@ class ConvertGeotiff:
         # Print the min, max based on stats index
         min = stats[0]
         max = stats[1]
-
+        
         values = []
 
         if(min < 0):
             min = min + ((min * - 1) * 0.5)
 
-        trimmedMin = min * 1.22
+        trimmedMin = min * 1.03
 
-        trimmedMax = max - \
-            (max * 0.05) if max < 10 else np.percentile(array, 95)
+        trimmedMax = max - (max * 0.05) if max < 10 else np.percentile(array, 95)
 
         per = (trimmedMax-trimmedMin)/7
 
-        cont = 1
-        while(cont <= 7):
-          if(cont == 4 | cont == 6):
-            trimmedMin = trimmedMin + per 
-          if(cont == 5 | cont == 7):
-            trimmedMin = trimmedMin + (per * 2)
-          values.append(trimmedMin)
-          trimmedMin = trimmedMin + per
-          cont += 1
+
+        cont = 0
+        while(cont < 7):
+            values.append(trimmedMin)
+            trimmedMin += per
+            if(cont == 2 or cont == 4 or cont == 5):
+                trimmedMin += per
+            if(cont == 3):
+                trimmedMin += per * 2
+            cont += 1
 
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
                    "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
@@ -506,7 +506,6 @@ class ConvertGeotiff:
 
         Create a colored hillshade result from merging hillshade / DEM
         '''
-
         tmpColorRelief = '{}\\colorRelief.tif'.format(TEMP_FOLDER)
         tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
         tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(TEMP_FOLDER)
@@ -548,11 +547,11 @@ class ConvertGeotiff:
     def exportStoragePreview(self, geotiff):
 
         # temporary disable the "auxiliary metadata" because JPG doesn't support it,
-        # so this creates an extra file that we don't need (...aux.xml)
+        # so this creates an extra file that we don't need (...aux.xml)        
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
-
+        
         outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
-
+        
         gdaloutput = params.storagePreview['output_folder'] if not self.isDsm else params.storageDSMPreview['output_folder']
         gdaloutput = '{}/{}'.format(gdaloutput, outputPreviewFilename)
 
@@ -568,7 +567,7 @@ class ConvertGeotiff:
 
         if(self.isDsm):
             output = '{}\\lowres.tif'.format(TEMP_FOLDER)
-            gdal.Warp(output, geotiff, xRes=0.3, yRes=0.3)
+            gdal.Warp(output, geotiff, xRes=0.2, yRes=0.2)
             file_ds = gdal.Open(output, gdal.GA_ReadOnly)
             geotiff = self.getColoredHillshade(file_ds)
             file_ds = None
