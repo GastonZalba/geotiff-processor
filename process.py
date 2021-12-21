@@ -23,7 +23,7 @@ TEMP_FOLDER = tempfile.gettempdir()
 def removeExtension(filename):
     return os.path.splitext(filename)[0]
 
-
+  
 class ConvertGeotiff:
     '''
     Some helpful docs:
@@ -67,7 +67,7 @@ class ConvertGeotiff:
         Path(params.storageJSONdata['output_folder']).mkdir(
             parents=True, exist_ok=True)
         Path(params.outlines['output_folder']).mkdir(
-            parents=True, exist_ok=True)
+            parents=True, exist_ok=True
         Path(params.geoserverDSM['output_folder']).mkdir(
             parents=True, exist_ok=True)
         Path(params.storageDSM['output_folder']).mkdir(
@@ -101,8 +101,8 @@ class ConvertGeotiff:
 
                 self.isDsm = self.bandas <= 2
 
-                    # Random hash to be used as the map id
-                    # https://docs.python.org/3/library/secrets.html
+                # Random hash to be used as the map id
+                # https://docs.python.org/3/library/secrets.html
 
                 if(self.isDsm):    # Generating output filename for DSM case
                     self.mapId = removeExtension(file.split(
@@ -148,7 +148,7 @@ class ConvertGeotiff:
                 self.exportStorageFiles(file_ds)
 
                 print('Exporting geoserver files...')
-                self.exportGeoserverFiles(file_ds, file)
+                self.exportGeoserverFiles(file_ds, file)              
                 # Once we're done, close properly the dataset
                 file_ds = None
 
@@ -544,6 +544,7 @@ class ConvertGeotiff:
 
         return tmpColoredHillshade
 
+
     def exportStoragePreview(self, geotiff):
 
         # temporary disable the "auxiliary metadata" because JPG doesn't support it,
@@ -554,6 +555,7 @@ class ConvertGeotiff:
         
         gdaloutput = params.storagePreview['output_folder'] if not self.isDsm else params.storageDSMPreview['output_folder']
         gdaloutput = '{}/{}'.format(gdaloutput, outputPreviewFilename)
+
 
         print('Exporting preview {}'.format(gdaloutput))
 
