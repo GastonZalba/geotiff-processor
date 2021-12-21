@@ -23,7 +23,7 @@ TEMP_FOLDER = tempfile.gettempdir()
 def removeExtension(filename):
     return os.path.splitext(filename)[0]
 
-  
+
 class ConvertGeotiff:
     '''
     Some helpful docs:
@@ -148,7 +148,7 @@ class ConvertGeotiff:
                 self.exportStorageFiles(file_ds)
 
                 print('Exporting geoserver files...')
-                self.exportGeoserverFiles(file_ds, file)              
+                self.exportGeoserverFiles(file_ds, file)
                 # Once we're done, close properly the dataset
                 file_ds = None
 
@@ -460,7 +460,7 @@ class ConvertGeotiff:
         # Print the min, max based on stats index
         min = stats[0]
         max = stats[1]
-        
+
         values = []
 
         if(min < 0):
@@ -468,10 +468,10 @@ class ConvertGeotiff:
 
         trimmedMin = min * 1.03
 
-        trimmedMax = max - (max * 0.05) if max < 10 else np.percentile(array, 95)
+        trimmedMax = max - \
+            (max * 0.05) if max < 10 else np.percentile(array, 95)
 
         per = (trimmedMax-trimmedMin)/7
-
 
         cont = 0
         while(cont < 7):
@@ -544,18 +544,16 @@ class ConvertGeotiff:
 
         return tmpColoredHillshade
 
-
     def exportStoragePreview(self, geotiff):
 
         # temporary disable the "auxiliary metadata" because JPG doesn't support it,
-        # so this creates an extra file that we don't need (...aux.xml)        
+        # so this creates an extra file that we don't need (...aux.xml)
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
-        
+
         outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
-        
+
         gdaloutput = params.storagePreview['output_folder'] if not self.isDsm else params.storageDSMPreview['output_folder']
         gdaloutput = '{}/{}'.format(gdaloutput, outputPreviewFilename)
-
 
         print('Exporting preview {}'.format(gdaloutput))
 
