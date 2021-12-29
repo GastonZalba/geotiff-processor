@@ -193,7 +193,7 @@ class ConvertGeotiff:
                 'multithread': True,
                 'dstSRS': 'EPSG:{}'.format(params.geoserver['epsg']),
                 # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-                'srcNodata': 'none'
+                'srcNodata': 'none' if self.tieneCanalAlfa else self.noDataValue
             }
 
             tmpWarp = TEMP_FOLDER + "\\" + file
@@ -485,18 +485,34 @@ class ConvertGeotiff:
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
                    "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
 
+        paletteSLD = ["#0000bb", "#51dede", "#57ed5a",
+                      "#44ec35", "#dfe301", "#ff8602", "#b20006"]
+
         palettePath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
 
-        f = open(palettePath, 'w')
+        paletteSLDPath = '{}\\{}.sld'.format(params.output_folder,self.outputFilename)
+
+        fileColor = open(palettePath, 'w')
+        fileSLD = open(paletteSLDPath, 'w')
+
+        fileSLD.write('<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:sld="http://www.opengis.net/sld" xmlns:gml="http://www.opengis.net/gml" version="1.0.0"><UserLayer><sld:LayerFeatureConstraints><sld:FeatureTypeConstraint/></sld:LayerFeatureConstraints><sld:UserStyle><sld:Name>' +
+                      str(geotiff) + '</sld:Name><sld:FeatureTypeStyle><sld:Rule><sld:RasterSymbolizer><sld:ChannelSelection><sld:GrayChannel><sld:SourceChannelName>1</sld:SourceChannelName></sld:GrayChannel></sld:ChannelSelection><sld:ColorMap type="ramp">')
 
         i = 0
         while i < len(palette):
             # Generating a color palette merging two structures
-            merge = str(values[i]) + ' ' + str(palette[i])
+            mergeColor = str(values[i]) + ' ' + str(palette[i])
+            mergeSLD = '<sld:ColorMapEntry color="' + \
+                str(paletteSLD[i]) + '"' + ' label="' + str(values[i]) + \
+                '" quantity="' + str(values[i]) + '"/>'
             i += 1
-            f.write(merge + '\n')
+            fileColor.write(mergeColor + '\n')
+            fileSLD.write(mergeSLD)
 
-        f.close()
+        fileSLD.write('</sld:ColorMap></sld:RasterSymbolizer></sld:Rule></sld:FeatureTypeStyle></sld:UserStyle></UserLayer></StyledLayerDescriptor>')
+
+        fileColor.close()
+        fileSLD.close()
 
         return palettePath
 
@@ -509,8 +525,7 @@ class ConvertGeotiff:
         tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
         tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(TEMP_FOLDER)
         tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(TEMP_FOLDER)
-        tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(
-            TEMP_FOLDER)
+        tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(TEMP_FOLDER)
 
         colorPalette = self.getColorMDE(geotiff)
 
@@ -534,7 +549,7 @@ class ConvertGeotiff:
         gdal.DEMProcessing(tmpHillshade, geotiff,
                            **kwargsHillshade)
 
-        Calc(["uint8(((A/255.)**(1/0.5))*255)"],
+        Calc(["uint8(((A/255)*(0.5))*255)"],
              A=tmpHillshade, outfile=tmpGammaHillshade)
         Calc(["uint8( ( \
                  2 * (A/255.)*(B/255.)*(A<128) + \
