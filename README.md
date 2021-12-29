@@ -20,11 +20,13 @@ El script crea los siguientes archivos optimizados:
     - Agregar a la variable `Path` la ruta '...\Python\Python37\Lib\site-packages\osgeo'
     - Chequear en consola `gdalinfo --version`.
 - Instalar la librería Numpy mediante el comando  `pip install numpy`.
+- Instalar la librería PIL mediante el comando `pip install pillow`.
 
 ## Uso
 - Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`.
 - Ponerles como nombre el número de registro audiovisual al que pertenecen (este dato será incorporado como metadata en los archivos procesados). NOTA: en caso de que un registro tenga más de un mapeo, agregarle al final de cada nombre de archivo un guión y el número; `-1`,`-2`, etc.
-- Si se desea procesar un archivo geotiff DSM, ingresar a continuación del número de registro audiovisual al que pertenecen, el subfijo `_dsm`.
+- Si se desea procesar un archivo geotiff DSM (Modelo Digital de Superficie), ingresar a continuación del número de registro audiovisual al que pertenecen, el subfijo `_mde`.
+- En caso de volver a procesar un mismo ortomosaico, debe ingresar como nombre del archivo, el obtenido del procesamiento original. 
 - Ejecutar `python process.py` para iniciar la conversión. Los archivos procesados serán creados en la carpeta `output`.
 
 ## Configuración
