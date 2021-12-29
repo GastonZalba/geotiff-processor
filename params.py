@@ -39,7 +39,6 @@ geoserverMDE = {
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
-        # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
     ]
 }
 
@@ -66,7 +65,6 @@ storageMDE = {
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
-        # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
     ]
 }
 
@@ -86,7 +84,7 @@ storagePreview = {
 }
 
 storageMDEPreview = {
-    'format': 'GTiff',
+    'format': 'JPEG',
     'colorFilename': 'colorPalette.txt'
 }
 
