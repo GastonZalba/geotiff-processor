@@ -16,7 +16,7 @@ metadata = [
 
 geoserver = {
     'epsg': 3857,
-    'output_folder': output_folder + '/geoserver',
+    'output_folder': output_folder + '/geoserver/rgb',
     'gsd': 20,  # cm
     'overviews': True,
     'creationOptions': [
@@ -30,7 +30,7 @@ geoserver = {
     ]
 }
 
-geoserverDSM = {
+geoserverMDE = {
     'output_folder': output_folder + '/geoserver/mde',
     'creationOptions': [
         'JPEG_QUALITY=80',
@@ -59,7 +59,7 @@ storage = {
     ]
 }
 
-storageDSM = {
+storageMDE = {
     'creationOptions': [
         'BIGTIFF=YES',  # for files larger than 4 GB
         'TFW=YES',
@@ -85,9 +85,9 @@ storagePreview = {
     ]
 }
 
-storageDSMPreview = {
+storageMDEPreview = {
     'format': 'GTiff',
-    'colorFilename': 'colorPalette.txt'  # dsm_style.qml converted to .txt
+    'colorFilename': 'colorPalette.txt'
 }
 
 outlines = {

@@ -46,7 +46,7 @@ class ConvertGeotiff:
         gdal.UseExceptions()
 
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
-        self.isDsm = False
+        self.isMDE = False
         self.checkDirectories()
         self.processTifs()
 
@@ -69,7 +69,7 @@ class ConvertGeotiff:
             parents=True, exist_ok=True)
         Path(params.outlines['output_folder']).mkdir(
             parents=True, exist_ok=True)
-        Path(params.geoserverDSM['output_folder']).mkdir(
+        Path(params.geoserverMDE['output_folder']).mkdir(
             parents=True, exist_ok=True)
 
     def processTifs(self):
@@ -96,12 +96,12 @@ class ConvertGeotiff:
                     self.ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
                 self.noDataValue = self.ultimaBanda.GetNoDataValue()  # take any band
 
-                self.isDsm = self.bandas <= 2
+                self.isMDE = self.bandas <= 2
 
                 # Random hash to be used as the map id
                 # https://docs.python.org/3/library/secrets.html
 
-                if(self.isDsm):    # Generating output filename for DSM case
+                if(self.isMDE):    # Generating output filename for DME case
                     self.mapId = removeExtension(file.split(
                         params.filename_prefix)[1].split(params.filename_suffix)[0]) if ok else secrets.token_hex(nbytes=6)
 
@@ -115,7 +115,7 @@ class ConvertGeotiff:
                         "_")[0] if ok else self.cleanFilename(removeExtension(file))
 
                 self.output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
-                self.outputFilename = self.output if not self.isDsm else '{}{}'.format(
+                self.outputFilename = self.output if not self.isMDE else '{}{}'.format(
                     self.output, params.filename_suffix)
 
                 # File GSD
@@ -204,26 +204,26 @@ class ConvertGeotiff:
 
         outputFilename = '{}.tif'.format(self.outputFilename)
 
-        gdaloutput = params.geoserver['output_folder'] if not self.isDsm else params.geoserverDSM['output_folder']
+        gdaloutput = params.geoserver['output_folder'] if not self.isMDE else params.geoserverMDE['output_folder']
         gdaloutput = '{}/{}'.format(gdaloutput, outputFilename)
 
         kwargs = {
             'format': 'GTiff',
-            'bandList': [1, 2, 3] if not self.isDsm else [1],
+            'bandList': [1, 2, 3] if not self.isMDE else [1],
             'xRes': params.geoserver['gsd']/100,
             'yRes': params.geoserver['gsd']/100,
-            'creationOptions': params.geoserver['creationOptions'] if not self.isDsm else params.geoserverDSM['creationOptions'],
+            'creationOptions': params.geoserver['creationOptions'] if not self.isMDE else params.geoserverMDE['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
 
-        if(not self.isDsm):
+        if(not self.isMDE):
             kwargs['maskBand'] = 4
 
         fileToConvert = ds if tmpWarp else file_ds
 
-        if (params.outlines['enabled'] and not self.isDsm):
+        if (params.outlines['enabled'] and not self.isMDE):
             self.exportOutline(fileToConvert)
 
         ds = gdal.Translate(gdaloutput, fileToConvert, **kwargs)
@@ -253,16 +253,16 @@ class ConvertGeotiff:
 
         kwargs = {
             'format': 'GTiff',
-            'bandList': [1, 2, 3] if not self.isDsm else [1],
+            'bandList': [1, 2, 3] if not self.isMDE else [1],
             'xRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeX,
             'yRes': params.storage['gsd']/100 if params.storage['gsd'] else self.pixelSizeY,
-            'creationOptions': params.storage['creationOptions'] if not self.isDsm else params.storageDSM['creationOptions'],
+            'creationOptions': params.storage['creationOptions'] if not self.isMDE else params.storageMDE['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
 
-        if(not self.isDsm):
+        if(not self.isMDE):
             kwargs['maskBand'] = 4
         else:
             kwargs['xRes'] = 0.2
@@ -273,7 +273,7 @@ class ConvertGeotiff:
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
-        if((params.storage['exportJSON']) and (not self.isDsm)):
+        if((params.storage['exportJSON']) and (not self.isMDE)):
             self.exportJSONdata(geotiff)
 
         if(params.storage['previews']):
@@ -444,7 +444,7 @@ class ConvertGeotiff:
 
         file.close()
 
-    def getColorDSM(self, geotiff):
+    def getColorMDE(self, geotiff):
         '''
         Create a color palette to use as a .txt, considering the elevation values
         '''
@@ -512,16 +512,16 @@ class ConvertGeotiff:
         tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(
             TEMP_FOLDER)
 
-        colorPalette = self.getColorDSM(geotiff)
+        colorPalette = self.getColorMDE(geotiff)
 
         kwargsColorRelief = {
-            'format': params.storageDSMPreview['format'],
+            'format': params.storageMDEPreview['format'],
             'colorFilename': colorPalette,
             'processing': 'color-relief'
         }
 
         kwargsHillshade = {
-            'format': params.storageDSMPreview['format'],
+            'format': params.storageMDEPreview['format'],
             'processing': 'hillshade',
             'azimuth': '90',
             'zFactor': '5'
@@ -577,7 +577,7 @@ class ConvertGeotiff:
             'noData': 'none'
         }
 
-        if(self.isDsm):
+        if(self.isMDE):
             output = '{}\\lowres.tif'.format(TEMP_FOLDER)
             gdal.Warp(output, geotiff)
             file_ds = gdal.Open(output, gdal.GA_ReadOnly)
@@ -587,7 +587,7 @@ class ConvertGeotiff:
         gdal.Translate(gdaloutput, geotiff,
                        **kwargs)
 
-        if(self.isDsm):
+        if(self.isMDE):
             os.remove(output)
             os.remove(geotiff)
 
