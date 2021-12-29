@@ -9,6 +9,7 @@ import numpy as np
 import params as params
 import tempfile
 from osgeo_utils.gdal_calc import Calc
+from PIL import Image, ImageChops, ImageEnhance
 
 from version import __version__
 
@@ -23,7 +24,7 @@ TEMP_FOLDER = tempfile.gettempdir()
 def removeExtension(filename):
     return os.path.splitext(filename)[0]
 
-  
+
 class ConvertGeotiff:
     '''
     Some helpful docs:
@@ -67,12 +68,8 @@ class ConvertGeotiff:
         Path(params.storageJSONdata['output_folder']).mkdir(
             parents=True, exist_ok=True)
         Path(params.outlines['output_folder']).mkdir(
-            parents=True, exist_ok=True
+            parents=True, exist_ok=True)
         Path(params.geoserverDSM['output_folder']).mkdir(
-            parents=True, exist_ok=True)
-        Path(params.storageDSM['output_folder']).mkdir(
-            parents=True, exist_ok=True)
-        Path(params.storageDSMPreview['output_folder']).mkdir(
             parents=True, exist_ok=True)
 
     def processTifs(self):
@@ -106,19 +103,20 @@ class ConvertGeotiff:
 
                 if(self.isDsm):    # Generating output filename for DSM case
                     self.mapId = removeExtension(file.split(
-                        'MapId-')[1].split('_dsm')[0]) if ok else secrets.token_hex(nbytes=6)
+                        params.filename_prefix)[1].split(params.filename_suffix)[0]) if ok else secrets.token_hex(nbytes=6)
 
                     self.registroid = file.split(
-                        'MapId-')[0] if ok else self.cleanFilename(removeExtension(file.split('_dsm')[0]))
+                        params.filename_prefix)[0] if ok else self.cleanFilename(removeExtension(file.split(params.filename_suffix)[0]))
                 else:
                     self.mapId = removeExtension(
-                        file.split('MapId-')[1]) if ok else secrets.token_hex(nbytes=6)
+                        file.split(params.filename_prefix)[1]) if ok else secrets.token_hex(nbytes=6)
 
                     self.registroid = file.split(
                         "_")[0] if ok else self.cleanFilename(removeExtension(file))
 
                 self.output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
-                self.outputFilename = self.output if not self.isDsm else f'{self.output}{params.filename_suffix}'
+                self.outputFilename = self.output if not self.isDsm else '{}{}'.format(
+                    self.output, params.filename_suffix)
 
                 # File GSD
                 gt = file_ds.GetGeoTransform()
@@ -148,7 +146,7 @@ class ConvertGeotiff:
                 self.exportStorageFiles(file_ds)
 
                 print('Exporting geoserver files...')
-                self.exportGeoserverFiles(file_ds, file)              
+                self.exportGeoserverFiles(file_ds, file)
                 # Once we're done, close properly the dataset
                 file_ds = None
 
@@ -223,8 +221,6 @@ class ConvertGeotiff:
         if(not self.isDsm):
             kwargs['maskBand'] = 4
 
-        #    self.changeKwargsDsm(kwargs, file_ds)
-
         fileToConvert = ds if tmpWarp else file_ds
 
         if (params.outlines['enabled'] and not self.isDsm):
@@ -248,7 +244,7 @@ class ConvertGeotiff:
 
         outputFilename = '{}.tif'.format(self.outputFilename)
 
-        gdaloutput = params.storage['output_folder'] if not self.isDsm else params.storageDSM['output_folder']
+        gdaloutput = params.storage['output_folder']
 
         gdaloutput = '{}/{}'.format(
             gdaloutput, outputFilename)
@@ -268,6 +264,9 @@ class ConvertGeotiff:
 
         if(not self.isDsm):
             kwargs['maskBand'] = 4
+        else:
+            kwargs['xRes'] = 0.2
+            kwargs['yRes'] = 0.2
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
@@ -460,26 +459,26 @@ class ConvertGeotiff:
         # Print the min, max based on stats index
         min = stats[0]
         max = stats[1]
-        
+
         values = []
 
         if(min < 0):
             min = min + ((min * - 1) * 0.5)
 
-        trimmedMin = min * 1.03
+        trimmedMin = min * 1.31 if max < 60 else min / 1.05
 
-        trimmedMax = max - (max * 0.05) if max < 10 else np.percentile(array, 95)
+        trimmedMax = max - \
+            (max * 0.30) if max < 10 else np.percentile(array, 95)
 
         per = (trimmedMax-trimmedMin)/7
-
 
         cont = 0
         while(cont < 7):
             values.append(trimmedMin)
             trimmedMin += per
-            if(cont == 2 or cont == 4 or cont == 5):
+            if(cont == 2 or cont == 3 or cont == 5):
                 trimmedMin += per
-            if(cont == 3):
+            if(cont == 4):
                 trimmedMin += per * 2
             cont += 1
 
@@ -510,6 +509,8 @@ class ConvertGeotiff:
         tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
         tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(TEMP_FOLDER)
         tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(TEMP_FOLDER)
+        tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(
+            TEMP_FOLDER)
 
         colorPalette = self.getColorDSM(geotiff)
 
@@ -522,7 +523,8 @@ class ConvertGeotiff:
         kwargsHillshade = {
             'format': params.storageDSMPreview['format'],
             'processing': 'hillshade',
-            'azimuth': '90'
+            'azimuth': '90',
+            'zFactor': '5'
         }
 
         # Using gdaldem to generate color-Relief and hillshade https://gdal.org/programs/gdaldem.html
@@ -534,28 +536,36 @@ class ConvertGeotiff:
 
         Calc(["uint8(((A/255.)**(1/0.5))*255)"],
              A=tmpHillshade, outfile=tmpGammaHillshade)
-        Calc(["uint8(2*(A/255.)*(B/255.)*(A<128) + B * (A>=128))"], A=tmpGammaHillshade,
+        Calc(["uint8( ( \
+                 2 * (A/255.)*(B/255.)*(A<128) + \
+                 ( 1 - 2 * (1-(A/255.))*(1-(B/255.)) ) * (A>=128) \
+               ) * 255 )"], A=tmpGammaHillshade,
              B=tmpColorRelief, outfile=tmpColoredHillshade, allBands="B")
+
+        im = Image.open(tmpColoredHillshade)
+        enhancer = ImageEnhance.Contrast(im)
+        factor = 1.12                               # Increase contrast
+        im_output = enhancer.enhance(factor)
+        im_output.save(tmpColoredHillshadeContrast)
 
         os.remove(tmpColorRelief)
         os.remove(tmpHillshade)
         os.remove(tmpGammaHillshade)
         os.remove(colorPalette)
+        os.remove(tmpColoredHillshade)
 
-        return tmpColoredHillshade
-
+        return tmpColoredHillshadeContrast
 
     def exportStoragePreview(self, geotiff):
 
         # temporary disable the "auxiliary metadata" because JPG doesn't support it,
-        # so this creates an extra file that we don't need (...aux.xml)        
+        # so this creates an extra file that we don't need (...aux.xml)
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
-        
-        outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
-        
-        gdaloutput = params.storagePreview['output_folder'] if not self.isDsm else params.storageDSMPreview['output_folder']
-        gdaloutput = '{}/{}'.format(gdaloutput, outputPreviewFilename)
 
+        outputPreviewFilename = '{}.jpg'.format(self.outputFilename)
+
+        gdaloutput = params.storagePreview['output_folder']
+        gdaloutput = '{}/{}'.format(gdaloutput, outputPreviewFilename)
 
         print('Exporting preview {}'.format(gdaloutput))
 
@@ -569,7 +579,7 @@ class ConvertGeotiff:
 
         if(self.isDsm):
             output = '{}\\lowres.tif'.format(TEMP_FOLDER)
-            gdal.Warp(output, geotiff, xRes=0.2, yRes=0.2)
+            gdal.Warp(output, geotiff)
             file_ds = gdal.Open(output, gdal.GA_ReadOnly)
             geotiff = self.getColoredHillshade(file_ds)
             file_ds = None
