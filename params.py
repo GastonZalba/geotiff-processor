@@ -3,7 +3,7 @@ input_folder = 'input'
 output_folder = 'output'
 
 filename_prefix = '_MapId-'
-filename_suffix = '_dsm'
+filename_suffix = '_mde'
 
 
 # To clean the output folder before starting
@@ -31,7 +31,7 @@ geoserver = {
 }
 
 geoserverDSM = {
-    'output_folder': output_folder + '/geoserver/dsm',
+    'output_folder': output_folder + '/geoserver/mde',
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=YES',  # for files larger than 4 GB
@@ -60,9 +60,7 @@ storage = {
 }
 
 storageDSM = {
-    'output_folder': output_folder + '/storage/dsm',
     'creationOptions': [
-        'JPEG_QUALITY=80',
         'BIGTIFF=YES',  # for files larger than 4 GB
         'TFW=YES',
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
@@ -88,7 +86,6 @@ storagePreview = {
 }
 
 storageDSMPreview = {
-    'output_folder': output_folder + '/storage/preview_dsm',
     'format': 'GTiff',
     'colorFilename': 'colorPalette.txt'  # dsm_style.qml converted to .txt
 }
