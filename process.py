@@ -463,9 +463,9 @@ class ConvertGeotiff:
         values = []
 
         if(min < 0):
-            min = min + ((min * - 1) * 0.5)
+            min = min * 0.5
 
-        trimmedMin = min * 1.31 if max < 60 else min / 1.05
+        trimmedMin = min * 1.31 if max < 40 else min / 1.01
 
         trimmedMax = max - \
             (max * 0.30) if max < 10 else np.percentile(array, 95)
@@ -478,8 +478,6 @@ class ConvertGeotiff:
             trimmedMin += per
             if(cont == 2 or cont == 3 or cont == 5):
                 trimmedMin += per
-            if(cont == 4):
-                trimmedMin += per * 2
             cont += 1
 
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
@@ -490,7 +488,7 @@ class ConvertGeotiff:
 
         palettePath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
 
-        paletteSLDPath = '{}\\{}.sld'.format(params.output_folder,self.outputFilename)
+        paletteSLDPath = '{}\\{}.sld'.format(params.storage['output_folder'],self.outputFilename)
 
         fileColor = open(palettePath, 'w')
         fileSLD = open(paletteSLDPath, 'w')
