@@ -32,6 +32,7 @@ geoserver = {
 
 geoserverMDE = {
     'output_folder': output_folder + '/geoserver/mde',
+    'gsd': 50,  # cm
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=YES',  # for files larger than 4 GB
@@ -59,6 +60,7 @@ storage = {
 }
 
 storageMDE = {
+    'gsd': 20,  # cm
     'creationOptions': [
         'BIGTIFF=YES',  # for files larger than 4 GB
         'TFW=YES',
@@ -86,6 +88,12 @@ storagePreview = {
 storageMDEPreview = {
     'format': 'JPEG',
     'colorFilename': 'colorPalette.txt'
+}
+
+mdeStyle = {
+    'disregard_values_than_0': False,    # for blue color
+    'min_percentile': 0.5,
+    'max_percentile': 96
 }
 
 outlines = {
