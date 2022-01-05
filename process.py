@@ -220,6 +220,9 @@ class ConvertGeotiff:
 
         if(not self.isMDE):
             kwargs['maskBand'] = 4
+        else:
+            kwargs['xRes'] = params.geoserverMDE['gsd']/100
+            kwargs['yRes'] = params.geoserverMDE['gsd']/100
 
         fileToConvert = ds if tmpWarp else file_ds
 
@@ -265,8 +268,8 @@ class ConvertGeotiff:
         if(not self.isMDE):
             kwargs['maskBand'] = 4
         else:
-            kwargs['xRes'] = 0.2
-            kwargs['yRes'] = 0.2
+            kwargs['xRes'] = params.storageMDE['gsd']/100
+            kwargs['yRes'] = params.storageMDE['gsd']/100
 
         geotiff = gdal.Translate(gdaloutput, filepath, **kwargs)
 
@@ -449,35 +452,61 @@ class ConvertGeotiff:
         Create a color palette to use as a .txt, considering the elevation values
         '''
 
-        array = geotiff.GetRasterBand(1).ReadAsArray()
-
-        srcband = geotiff.GetRasterBand(1)
-
-        # Get raster statistics
-        stats = srcband.GetStatistics(True, True)
-
-        # Print the min, max based on stats index
-        min = stats[0]
-        max = stats[1]
-
         values = []
 
-        if(min < 0):
-            min = min * 0.5
+        geotiffCompressed = '{}\\mde_compress.tif'.format(TEMP_FOLDER)
 
-        trimmedMin = min * 1.31 if max < 40 else min / 1.01
+        kwargs = {
+            'format': 'GTiff',
+            'xRes': 0.3,
+            'yRes': 0.3
+        }
 
-        trimmedMax = max - \
-            (max * 0.30) if max < 10 else np.percentile(array, 95)
+        # Warp to make faster processing
+        geotiff = gdal.Warp(
+            geotiffCompressed,
+            geotiff,
+            **kwargs
+        )
 
-        per = (trimmedMax-trimmedMin)/7
+        array = np.array(geotiff.GetRasterBand(1).ReadAsArray())
+        geotiff = None
+
+        array = np.array(array.flat)
+
+        min_percentile = params.mdeStyle['min_percentile']
+        max_percentile = params.mdeStyle['max_percentile']
+
+        # Remove NoDataValue, it doesn't mess up the percentage calculation
+        array = np.ma.masked.np.less(array, 0) if params.mdeStyle['disregard_values_than_0'] else np.ma.masked_equal(
+            array, self.noDataValue, False)
+
+        # Remove masked values
+        array = array.compressed()
+
+        # similar to "Cumulative cut count" (Qgis)
+        trimmedMin = np.percentile(
+            array,
+            min_percentile
+        )
+
+        trimmedMax = np.percentile(
+            array,
+            max_percentile
+        )
+
+        per = ((trimmedMax / 2) - (trimmedMin / 2)) / 7
 
         cont = 0
         while(cont < 7):
             values.append(trimmedMin)
             trimmedMin += per
-            if(cont == 2 or cont == 3 or cont == 5):
+            if(cont == 1):
                 trimmedMin += per
+            if(cont == 3):
+                trimmedMin += per * 3
+            if(cont == 4 or cont == 5):
+                trimmedMin += per * 2
             cont += 1
 
         palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
@@ -488,26 +517,28 @@ class ConvertGeotiff:
 
         palettePath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
 
-        paletteSLDPath = '{}\\{}.sld'.format(params.storage['output_folder'],self.outputFilename)
+        paletteSLDPath = '{}\\{}.sld'.format(
+            params.storage['output_folder'], self.outputFilename)
 
         fileColor = open(palettePath, 'w')
         fileSLD = open(paletteSLDPath, 'w')
 
-        fileSLD.write('<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:sld="http://www.opengis.net/sld" xmlns:gml="http://www.opengis.net/gml" version="1.0.0"><UserLayer><sld:LayerFeatureConstraints><sld:FeatureTypeConstraint/></sld:LayerFeatureConstraints><sld:UserStyle><sld:Name>' +
-                      str(geotiff) + '</sld:Name><sld:FeatureTypeStyle><sld:Rule><sld:RasterSymbolizer><sld:ChannelSelection><sld:GrayChannel><sld:SourceChannelName>1</sld:SourceChannelName></sld:GrayChannel></sld:ChannelSelection><sld:ColorMap type="ramp">')
+        fileSLD.write('<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><NamedLayer><Name>dipsoh:ortomosaicos_mde</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ChannelSelection><GrayChannel><SourceChannelName>1</SourceChannelName></GrayChannel></ChannelSelection><ColorMap type="ramp">')
 
         i = 0
         while i < len(palette):
             # Generating a color palette merging two structures
             mergeColor = str(values[i]) + ' ' + str(palette[i])
-            mergeSLD = '<sld:ColorMapEntry color="' + \
-                str(paletteSLD[i]) + '"' + ' label="' + str(values[i]) + \
-                '" quantity="' + str(values[i]) + '"/>'
+            mergeSLD = '<ColorMapEntry label="' + \
+                str(round(values[i], 2)) + \
+                '" quantity="' + str(round(values[i], 6)) + \
+                '" color="' + str(paletteSLD[i]) + '"/>'
             i += 1
             fileColor.write(mergeColor + '\n')
             fileSLD.write(mergeSLD)
 
-        fileSLD.write('</sld:ColorMap></sld:RasterSymbolizer></sld:Rule></sld:FeatureTypeStyle></sld:UserStyle></UserLayer></StyledLayerDescriptor>')
+        fileSLD.write(
+            ' </ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>')
 
         fileColor.close()
         fileSLD.close()
@@ -523,7 +554,8 @@ class ConvertGeotiff:
         tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
         tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(TEMP_FOLDER)
         tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(TEMP_FOLDER)
-        tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(TEMP_FOLDER)
+        tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(
+            TEMP_FOLDER)
 
         colorPalette = self.getColorMDE(geotiff)
 
@@ -591,17 +623,12 @@ class ConvertGeotiff:
         }
 
         if(self.isMDE):
-            output = '{}\\lowres.tif'.format(TEMP_FOLDER)
-            gdal.Warp(output, geotiff)
-            file_ds = gdal.Open(output, gdal.GA_ReadOnly)
-            geotiff = self.getColoredHillshade(file_ds)
-            file_ds = None
+            geotiff = self.getColoredHillshade(geotiff)
 
         gdal.Translate(gdaloutput, geotiff,
                        **kwargs)
 
         if(self.isMDE):
-            os.remove(output)
             os.remove(geotiff)
 
         # reenable the internal metadata
