@@ -3,7 +3,7 @@ input_folder = 'input'
 output_folder = 'output'
 
 filename_prefix = '_MapId-'
-filename_suffix = '_dsm'
+filename_suffix = '_mde'
 
 
 # To clean the output folder before starting
@@ -16,7 +16,7 @@ metadata = [
 
 geoserver = {
     'epsg': 3857,
-    'output_folder': output_folder + '/geoserver',
+    'output_folder': output_folder + '/geoserver/rgb',
     'gsd': 20,  # cm
     'overviews': True,
     'creationOptions': [
@@ -30,8 +30,9 @@ geoserver = {
     ]
 }
 
-geoserverDSM = {
-    'output_folder': output_folder + '/geoserver/dsm',
+geoserverMDE = {
+    'output_folder': output_folder + '/geoserver/mde',
+    'gsd': 50,  # cm
     'creationOptions': [
         'JPEG_QUALITY=80',
         'BIGTIFF=YES',  # for files larger than 4 GB
@@ -39,7 +40,6 @@ geoserverDSM = {
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
-        # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
     ]
 }
 
@@ -59,16 +59,14 @@ storage = {
     ]
 }
 
-storageDSM = {
-    'output_folder': output_folder + '/storage/dsm',
+storageMDE = {
+    'gsd': 20,  # cm
     'creationOptions': [
-        'JPEG_QUALITY=80',
         'BIGTIFF=YES',  # for files larger than 4 GB
         'TFW=YES',
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
-        # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
     ]
 }
 
@@ -87,10 +85,15 @@ storagePreview = {
     ]
 }
 
-storageDSMPreview = {
-    'output_folder': output_folder + '/storage/preview_dsm',
-    'format': 'GTiff',
-    'colorFilename': 'colorPalette.txt'  # dsm_style.qml converted to .txt
+storageMDEPreview = {
+    'format': 'JPEG',
+    'colorFilename': 'colorPalette.txt'
+}
+
+mdeStyle = {
+    'disregard_values_than_0': False,    # for blue color
+    'min_percentile': 0.5,
+    'max_percentile': 96
 }
 
 outlines = {
