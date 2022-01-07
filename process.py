@@ -67,7 +67,7 @@ class ConvertGeotiff:
             parents=True, exist_ok=True)
         Path(params.storagePreview['output_folder']).mkdir(
             parents=True, exist_ok=True)
-        Path(params.storageJSONdata['output_folder']).mkdir(
+        Path(params.storage['output_folder_json']).mkdir(
             parents=True, exist_ok=True)
         Path(params.outlines['output_folder']).mkdir(
             parents=True, exist_ok=True)
