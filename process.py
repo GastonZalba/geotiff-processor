@@ -3,13 +3,15 @@ import os
 import secrets
 import shutil
 import json
+import math
+import tempfile
+import numpy as np
 from pathlib import Path
 from datetime import datetime
-import numpy as np
-import params as params
-import tempfile
 from osgeo_utils.gdal_calc import Calc
-from PIL import Image, ImageChops, ImageEnhance
+from PIL import Image, ImageEnhance, ImageColor
+
+import params as params
 
 from version import __version__
 
@@ -96,12 +98,16 @@ class ConvertGeotiff:
                     self.ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
                 self.noDataValue = self.ultimaBanda.GetNoDataValue()  # take any band
 
+                # Pix4DMatic inject nan as noData value
+                if (math.isnan(self.noDataValue)):
+                    self.noDataValue = 0
+
                 self.isMDE = self.bandas <= 2
 
                 # Random hash to be used as the map id
                 # https://docs.python.org/3/library/secrets.html
 
-                if(self.isMDE):    # Generating output filename for DME case
+                if (self.isMDE):    # Generating output filename for DME case
                     self.mapId = removeExtension(file.split(
                         params.filename_prefix)[1].split(params.filename_suffix)[0]) if ok else secrets.token_hex(nbytes=6)
 
@@ -132,7 +138,6 @@ class ConvertGeotiff:
                 srs = osr.SpatialReference(wkt=prj)
                 self.epsg = int(srs.GetAttrValue('AUTHORITY', 1))
 
-                # Drone Deploy | Pix4DMatic dates
                 self.date = self.getDate(file_ds)
 
                 self.extra_metadata = params.metadata
@@ -163,6 +168,9 @@ class ConvertGeotiff:
         return filename
 
     def getDate(self, file_ds):
+        '''
+        Get Date from tif metadata
+        '''
         droneDeployDate = file_ds.GetMetadataItem("acquisitionStartDate")
         pix4DMaticDate = file_ds.GetMetadataItem("TIFFTAG_DATETIME")
         # pix4dMapper doesn't store date info? WTF
@@ -210,19 +218,16 @@ class ConvertGeotiff:
         kwargs = {
             'format': 'GTiff',
             'bandList': [1, 2, 3] if not self.isMDE else [1],
-            'xRes': params.geoserver['gsd']/100,
-            'yRes': params.geoserver['gsd']/100,
+            'xRes': params.geoserver['gsd']/100 if not self.isMDE else params.geoserverMDE['gsd']/100,
+            'yRes': params.geoserver['gsd']/100 if not self.isMDE else params.geoserverMDE['gsd']/100,
             'creationOptions': params.geoserver['creationOptions'] if not self.isMDE else params.geoserverMDE['creationOptions'],
             'metadataOptions': self.extra_metadata,
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
 
-        if(not self.isMDE):
+        if (not self.isMDE):
             kwargs['maskBand'] = 4
-        else:
-            kwargs['xRes'] = params.geoserverMDE['gsd']/100
-            kwargs['yRes'] = params.geoserverMDE['gsd']/100
 
         fileToConvert = ds if tmpWarp else file_ds
 
@@ -265,7 +270,7 @@ class ConvertGeotiff:
             'noData': 'none' if self.tieneCanalAlfa else self.noDataValue
         }
 
-        if(not self.isMDE):
+        if (not self.isMDE):
             kwargs['maskBand'] = 4
         else:
             kwargs['xRes'] = params.storageMDE['gsd']/100
@@ -276,10 +281,10 @@ class ConvertGeotiff:
         if (params.storage['overviews']):
             self.createOverviews(geotiff)
 
-        if((params.storage['exportJSON']) and (not self.isMDE)):
+        if ((params.storage['exportJSON'])) and (not self.isMDE):
             self.exportJSONdata(geotiff)
 
-        if(params.storage['previews']):
+        if (params.storage['previews']):
             self.exportStoragePreview(geotiff)
 
         return geotiff
@@ -429,121 +434,97 @@ class ConvertGeotiff:
         outputJSONFilename = '{}.json'.format(self.outputFilename)
 
         gdaloutput = '{}/{}'.format(
-            params.storageJSONdata['output_folder'], outputJSONFilename)
+            params.storage['output_folder_json'], outputJSONFilename)
 
         print('Exporting JSON data {}'.format(gdaloutput))
 
         # https://gdal.org/python/osgeo.gdal-module.html#InfoOptions
 
-        kwargs = {
-            'allMetadata': True,
-            'format': 'json'
-        }
-
-        data = gdal.Info(ds, **kwargs)
+        data = gdal.Info(ds, format='json')
 
         file = open(gdaloutput, 'w')
         json.dump(data, file)
 
         file.close()
 
-    def getColorMDE(self, geotiff):
+    def getMdeColorValues(self, geotiff):
         '''
         Create a color palette to use as a .txt, considering the elevation values
         '''
 
-        values = []
-
-        geotiffCompressed = '{}\\mde_compress.tif'.format(TEMP_FOLDER)
-
-        kwargs = {
-            'format': 'GTiff',
-            'xRes': 0.3,
-            'yRes': 0.3
-        }
-
-        # Warp to make faster processing
-        geotiff = gdal.Warp(
-            geotiffCompressed,
-            geotiff,
-            **kwargs
-        )
+        colorValues = []
 
         array = np.array(geotiff.GetRasterBand(1).ReadAsArray())
-        geotiff = None
 
         array = np.array(array.flat)
 
-        min_percentile = params.mdeStyle['min_percentile']
-        max_percentile = params.mdeStyle['max_percentile']
-
         # Remove NoDataValue, it doesn't mess up the percentage calculation
-        array = np.ma.masked.np.less(array, 0) if params.mdeStyle['disregard_values_than_0'] else np.ma.masked_equal(
-            array, self.noDataValue, False)
+        if (params.styleMDE['disregard_values_less_than_0']):
+            array = np.ma.masked_less(array, 0, False)
+            array = array.compressed()
+        else:
+            if (self.noDataValue != 'none'):
+                array = np.ma.masked_equal(array, self.noDataValue, False)
+                array = array.compressed()
 
-        # Remove masked values
-        array = array.compressed()
+        # remove nan values
+        array = np.nan_to_num(array)
 
         # similar to "Cumulative cut count" (Qgis)
         trimmedMin = np.percentile(
             array,
-            min_percentile
+            params.styleMDE['min_percentile']
         )
+        print('Trimmed Min:', trimmedMin)
 
         trimmedMax = np.percentile(
             array,
-            max_percentile
+            params.styleMDE['max_percentile']
         )
+        print('Trimmed Max:', trimmedMax)
+
+        if (math.isnan(trimmedMax) or math.isnan(trimmedMin)):
+            raise RuntimeError('Reading nan values')
 
         per = ((trimmedMax / 2) - (trimmedMin / 2)) / 7
 
         cont = 0
         while(cont < 7):
-            values.append(trimmedMin)
+            colorValues.append(trimmedMin)
             trimmedMin += per
-            if(cont == 1):
+            if (cont == 1):
                 trimmedMin += per
-            if(cont == 3):
+            elif (cont == 3):
                 trimmedMin += per * 3
-            if(cont == 4 or cont == 5):
+            elif (cont == 4 or cont == 5):
                 trimmedMin += per * 2
             cont += 1
 
-        palette = ["0 0 187 0", "81 222 222 0", "87 237 90 0",
-                   "68 236 53 0", "223 227 1 0", "255 134 2 0", "178 0 6 0"]  # bcgyor
+        return colorValues
 
-        paletteSLD = ["#0000bb", "#51dede", "#57ed5a",
-                      "#44ec35", "#dfe301", "#ff8602", "#b20006"]
+    def exportSld(self, colorValues):
 
-        palettePath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
-
-        paletteSLDPath = '{}\\{}.sld'.format(
+        sldPath = '{}\\{}.sld'.format(
             params.storage['output_folder'], self.outputFilename)
 
-        fileColor = open(palettePath, 'w')
-        fileSLD = open(paletteSLDPath, 'w')
+        fileSLD = open(sldPath, 'w')
 
         fileSLD.write('<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><NamedLayer><Name>dipsoh:ortomosaicos_mde</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ChannelSelection><GrayChannel><SourceChannelName>1</SourceChannelName></GrayChannel></ChannelSelection><ColorMap type="ramp">')
 
         i = 0
-        while i < len(palette):
+        while i < len(params.styleMDE['palette']):
             # Generating a color palette merging two structures
-            mergeColor = str(values[i]) + ' ' + str(palette[i])
             mergeSLD = '<ColorMapEntry label="' + \
-                str(round(values[i], 2)) + \
-                '" quantity="' + str(round(values[i], 6)) + \
-                '" color="' + str(paletteSLD[i]) + '"/>'
+                str(round(colorValues[i], 2)) + \
+                '" quantity="' + str(round(colorValues[i], 6)) + \
+                '" color="' + str(params.styleMDE['palette'][i]) + '"/>'
             i += 1
-            fileColor.write(mergeColor + '\n')
             fileSLD.write(mergeSLD)
 
         fileSLD.write(
-            ' </ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>')
+            '</ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>')
 
-        fileColor.close()
         fileSLD.close()
-
-        return palettePath
 
     def getColoredHillshade(self, geotiff):
         '''
@@ -556,36 +537,73 @@ class ConvertGeotiff:
         tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(TEMP_FOLDER)
         tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(
             TEMP_FOLDER)
+        tmpFileColorPath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
+        tmpGeotiffCompressed = '{}\\mde_compress.tif'.format(TEMP_FOLDER)
 
-        colorPalette = self.getColorMDE(geotiff)
+        # Warp to make faster processing
+        geotiff = gdal.Warp(
+            tmpGeotiffCompressed,
+            geotiff,
+            **{
+                'format': 'GTiff',
+                'xRes': 0.3,
+                'yRes': 0.3
+            }
+        )
 
-        kwargsColorRelief = {
-            'format': params.storageMDEPreview['format'],
-            'colorFilename': colorPalette,
-            'processing': 'color-relief'
-        }
+        colorValues = self.getMdeColorValues(geotiff)
 
-        kwargsHillshade = {
-            'format': params.storageMDEPreview['format'],
-            'processing': 'hillshade',
-            'azimuth': '90',
-            'zFactor': '5'
-        }
+        if params.styleMDE['export_sld']:
+            self.exportSld(colorValues)
+
+        fileColor = open(tmpFileColorPath, 'w')
+
+        rgbPalette = [' '.join(map(str, ImageColor.getcolor(x, 'RGB')))
+                      for x in params.styleMDE['palette']]
+
+        # Write palette file to be imported in gdal
+        i = 0
+        while i < len(params.styleMDE['palette']):
+            # Generating a color palette merging two structures
+            mergeColor = str(colorValues[i]) + ' ' + \
+                str(rgbPalette[i])
+            fileColor.write(mergeColor + '\n')
+            i += 1
+
+        fileColor.close()
 
         # Using gdaldem to generate color-Relief and hillshade https://gdal.org/programs/gdaldem.html
-        gdal.DEMProcessing(tmpColorRelief, geotiff,
-                           **kwargsColorRelief)
+        gdal.DEMProcessing(
+            tmpColorRelief,
+            geotiff,
+            **{
+                'format': 'JPEG',
+                'colorFilename': tmpFileColorPath,
+                'processing': 'color-relief'
+            }
+        )
 
-        gdal.DEMProcessing(tmpHillshade, geotiff,
-                           **kwargsHillshade)
+        gdal.DEMProcessing(
+            tmpHillshade,
+            geotiff,
+            **{
+                'format': 'JPEG',
+                'processing': 'hillshade',
+                'azimuth': '90',
+                'zFactor': '5'
+            }
+        )
 
+        # Adjust hillshade gamma values
         Calc(["uint8(((A/255)*(0.5))*255)"],
-             A=tmpHillshade, outfile=tmpGammaHillshade)
+             A=tmpHillshade, outfile=tmpGammaHillshade, overwrite=True)
+
+        # Merge hillshade and color
         Calc(["uint8( ( \
                  2 * (A/255.)*(B/255.)*(A<128) + \
                  ( 1 - 2 * (1-(A/255.))*(1-(B/255.)) ) * (A>=128) \
                ) * 255 )"], A=tmpGammaHillshade,
-             B=tmpColorRelief, outfile=tmpColoredHillshade, allBands="B")
+             B=tmpColorRelief, outfile=tmpColoredHillshade, allBands="B", overwrite=True)
 
         im = Image.open(tmpColoredHillshade)
         enhancer = ImageEnhance.Contrast(im)
@@ -596,7 +614,7 @@ class ConvertGeotiff:
         os.remove(tmpColorRelief)
         os.remove(tmpHillshade)
         os.remove(tmpGammaHillshade)
-        os.remove(colorPalette)
+        os.remove(tmpFileColorPath)
         os.remove(tmpColoredHillshade)
 
         return tmpColoredHillshadeContrast
@@ -614,21 +632,22 @@ class ConvertGeotiff:
 
         print('Exporting preview {}'.format(gdaloutput))
 
-        kwargs = {
-            'format': params.storagePreview['format'],
-            'width': params.storagePreview['width'],  # px
-            'creationOptions': params.storagePreview['creationOptions'],
-            # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-            'noData': 'none'
-        }
-
-        if(self.isMDE):
+        if (self.isMDE):
             geotiff = self.getColoredHillshade(geotiff)
 
-        gdal.Translate(gdaloutput, geotiff,
-                       **kwargs)
+        gdal.Translate(
+            gdaloutput,
+            geotiff,
+            **{
+                'format': params.storagePreview['format'],
+                'width': params.storagePreview['width'],  # px
+                'creationOptions': params.storagePreview['creationOptions'],
+                # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
+                'noData': 'none'
+            }
+        )
 
-        if(self.isMDE):
+        if (self.isMDE):
             os.remove(geotiff)
 
         # reenable the internal metadata

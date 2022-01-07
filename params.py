@@ -5,7 +5,6 @@ output_folder = 'output'
 filename_prefix = '_MapId-'
 filename_suffix = '_mde'
 
-
 # To clean the output folder before starting
 clean_output_folder = True
 
@@ -34,7 +33,6 @@ geoserverMDE = {
     'output_folder': output_folder + '/geoserver/mde',
     'gsd': 50,  # cm
     'creationOptions': [
-        'JPEG_QUALITY=80',
         'BIGTIFF=YES',  # for files larger than 4 GB
         'TFW=NO',
         'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
@@ -45,13 +43,14 @@ geoserverMDE = {
 
 storage = {
     'output_folder': output_folder + '/storage',
+    'output_folder_json': output_folder + '/storage/jsondata',
     'gsd': None,  # None to use original | cm
     'overviews': True,
     'exportJSON': True,  # To export a JSON data file
     'previews': True,
     'creationOptions': [
         'JPEG_QUALITY=80',
-        'BIGTIFF=IF_NEEDED',
+        'BIGTIFF=YES',
         'TFW=YES',
         'TILED=YES',
         'PHOTOMETRIC=YCBCR',
@@ -70,9 +69,6 @@ storageMDE = {
     ]
 }
 
-storageJSONdata = {
-    'output_folder': output_folder + '/storage/jsondata'
-}
 
 storagePreview = {
     'output_folder': output_folder + '/storage/previews',
@@ -85,22 +81,35 @@ storagePreview = {
     ]
 }
 
-storageMDEPreview = {
-    'format': 'JPEG',
-    'colorFilename': 'colorPalette.txt'
-}
+styleMDE = {
+    
+    # Remove negative values from mde from the style calculations. Otherwhise, removes only the noData values.
+    # This can be used if the mde has some processing errors/holes
+    'disregard_values_less_than_0': True,
 
-mdeStyle = {
-    'disregard_values_than_0': False,    # for blue color
+    # similar to "Cumulative cut count" (Qgis)
     'min_percentile': 0.5,
-    'max_percentile': 96
+    'max_percentile': 96,
+
+    'export_sld': True,
+
+    # min to max
+    'palette': [
+        "#0000bb",
+        "#51dede",
+        "#57ed5a",
+        "#44ec35",
+        "#dfe301",
+        "#ff8602",
+        "#b20006"
+    ]
 }
 
 outlines = {
     'enabled': True,
     'output_folder': output_folder + '/storage/outlines',
 
-    # Polygons bigger than this area arepreserved in the outlines
+    # Polygons bigger than this area are preserved in the outlines
     'minimum_area': 10,  # m2
 
     # Use to simplify the geometry
