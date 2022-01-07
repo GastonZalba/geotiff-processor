@@ -25,7 +25,7 @@ El script crea los siguientes archivos optimizados:
 ## Uso
 - Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`.
 - Ponerles como nombre el número de registro audiovisual al que pertenecen (este dato será incorporado como metadata en los archivos procesados). NOTA: en caso de que un registro tenga más de un mapeo, agregarle al final de cada nombre de archivo un guión y el número; `-1`,`-2`, etc.
-- Si se desea procesar un archivo geotiff MDE (Modelo Digital de Elevación), ingresar a continuación del número de registro audiovisual al que pertenecen, el subfijo `_mde`.
+- Si se desea procesar un archivo geotiff MDE (Modelo Digital de Elevación), ingresar a continuación del número de registro audiovisual el número de MapId al que pertenece y el sufijo `_mde`, quedando una estructura análoga a `12345678_MapId-123445_mde.tif`.
 - En caso de volver a procesar un mismo ortomosaico, debe ingresar como nombre del archivo, el obtenido del procesamiento original. 
 - Ejecutar `python process.py` para iniciar la conversión. Los archivos procesados serán creados en la carpeta `output`.
 
