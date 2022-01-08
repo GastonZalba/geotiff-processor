@@ -33,6 +33,8 @@ El script crea los siguientes archivos optimizados:
 - De ser necesario modificar archivo `params.py` según formatos de exportación, metadata y carpetas.
 
 ## TODO
-- Subir automáticamente los archivos a la capa vectorials y a la carpeta de red.
+- Subir automáticamente los archivos storage a la red
+- Escribir directamente en base de datos lo que se guarda en la carpeta _database_
+- Dividir archivo process.py en diferentes módulos
 
 

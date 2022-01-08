@@ -2,11 +2,19 @@
 input_folder = 'input'
 output_folder = 'output'
 
+output_folder_storage = f'{output_folder}/storage'
+output_folder_database = f'{output_folder}/database'
+output_folder_geoserver = f'{output_folder}/geoserver'
+
 filename_prefix = '_MapId-'
 filename_suffix = '_mde'
+outline_suffix = '_outline'
+gdalinfo_suffix = '_gdalinfo'
 
 # To clean the output folder before starting
 clean_output_folder = True
+
+no_data = -10000
 
 # https://gdal.org/drivers/raster/gtiff.html#metadata
 metadata = [
@@ -15,7 +23,7 @@ metadata = [
 
 geoserver = {
     'epsg': 3857,
-    'output_folder': output_folder + '/geoserver/rgb',
+    'output_folder': output_folder_geoserver + '/rgb',
     'gsd': 20,  # cm
     'overviews': True,
     'creationOptions': [
@@ -30,7 +38,7 @@ geoserver = {
 }
 
 geoserverMDE = {
-    'output_folder': output_folder + '/geoserver/mde',
+    'output_folder': output_folder_geoserver + '/mde',
     'gsd': 50,  # cm
     'creationOptions': [
         'BIGTIFF=YES',  # for files larger than 4 GB
@@ -42,8 +50,6 @@ geoserverMDE = {
 }
 
 storage = {
-    'output_folder': output_folder + '/storage',
-    'output_folder_json': output_folder + '/storage/jsondata',
     'gsd': None,  # None to use original | cm
     'overviews': True,
     'exportJSON': True,  # To export a JSON data file
@@ -71,7 +77,6 @@ storageMDE = {
 
 
 storagePreview = {
-    'output_folder': output_folder + '/storage/previews',
     'width': 650,  # px
     # https://gdal.org/drivers/raster/jpeg.html
     'format': 'JPEG',
@@ -107,7 +112,6 @@ styleMDE = {
 
 outlines = {
     'enabled': True,
-    'output_folder': output_folder + '/storage/outlines',
 
     # Polygons bigger than this area are preserved in the outlines
     'minimum_area': 10,  # m2
