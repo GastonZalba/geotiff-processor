@@ -69,8 +69,8 @@ storageMDE = {
     'gsd': 20,  # cm
     'creationOptions': [
         'BIGTIFF=YES',  # for files larger than 4 GB
-        'TFW=YES',
-        'TILED=NO',  # forces the creation of a tiled output GeoTiff with default parameters
+        'TFW=NO',
+        'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
     ]
