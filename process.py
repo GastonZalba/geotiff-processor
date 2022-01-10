@@ -539,7 +539,7 @@ class ConvertGeotiff:
 
         colorValues = self.getMdeColorValues(geotiff)
 
-        if params.styleMDE['export_sld']:
+        if params.styleMDE['export_quantities']:
             self.exportQuantities(colorValues)
 
         fileColor = open(tmpFileColorPath, 'w')
@@ -611,7 +611,7 @@ class ConvertGeotiff:
         # so this creates an extra file that we don't need (...aux.xml)
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'NO')
 
-        outputPreviewFilename = f'{self.outputFilename}_preview.jpg'
+        outputPreviewFilename = f'{self.outputFilename}{params.preview_suffix}.jpg'
 
         gdaloutput = '{}/{}'.format(self.outputFolder, outputPreviewFilename)
 

@@ -10,6 +10,7 @@ filename_prefix = '_MapId-'
 filename_suffix = '_mde'
 outline_suffix = '_outline'
 gdalinfo_suffix = '_gdalinfo'
+preview_suffix = '_preview'
 
 # To clean the output folder before starting
 clean_output_folder = True
@@ -69,7 +70,7 @@ storageMDE = {
     'creationOptions': [
         'BIGTIFF=YES',  # for files larger than 4 GB
         'TFW=YES',
-        'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
+        'TILED=NO',  # forces the creation of a tiled output GeoTiff with default parameters
         'PHOTOMETRIC=MINISBLACK',
         'COMPRESS=DEFLATE',
     ]
@@ -96,7 +97,7 @@ styleMDE = {
     'min_percentile': 0.5,
     'max_percentile': 96,
 
-    'export_sld': True,
+    'export_quantities': True,
 
     # min to max
     'palette': [
