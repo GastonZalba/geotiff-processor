@@ -493,28 +493,24 @@ class ConvertGeotiff:
 
         return colorValues
 
-    def exportSld(self, colorValues):
+    def exportQuantities(self, colorValues):
 
-        sldPath = '{}\\{}.sld'.format(self.outputFolder, self.outputFilename)
+        quantities = []
 
-        fileSLD = open(sldPath, 'w')
+        quantitiesPath = '{}\\{}.txt'.format(
+            params.output_folder_database, self.outputFilename)
 
-        fileSLD.write('<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><NamedLayer><Name>dipsoh:ortomosaicos_mde</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ChannelSelection><GrayChannel><SourceChannelName>1</SourceChannelName></GrayChannel></ChannelSelection><ColorMap type="ramp">')
+        fileQuantities = open(quantitiesPath, 'w')
 
         i = 0
+        fileQuantities.write('{')
         while i < len(params.styleMDE['palette']):
             # Generating a color palette merging two structures
-            mergeSLD = '<ColorMapEntry label="' + \
-                str(round(colorValues[i], 2)) + \
-                '" quantity="' + str(round(colorValues[i], 6)) + \
-                '" color="' + str(params.styleMDE['palette'][i]) + '"/>'
+            quantities.append(str(round(colorValues[i], 6)))
             i += 1
-            fileSLD.write(mergeSLD)
-
-        fileSLD.write(
-            '</ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>')
-
-        fileSLD.close()
+        fileQuantities.write(",".join(quantities))
+        fileQuantities.write('}')
+        fileQuantities.close()
 
     def getColoredHillshade(self, geotiff):
         '''
@@ -544,7 +540,7 @@ class ConvertGeotiff:
         colorValues = self.getMdeColorValues(geotiff)
 
         if params.styleMDE['export_sld']:
-            self.exportSld(colorValues)
+            self.exportQuantities(colorValues)
 
         fileColor = open(tmpFileColorPath, 'w')
 
