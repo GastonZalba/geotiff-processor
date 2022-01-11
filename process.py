@@ -89,7 +89,7 @@ class ConvertGeotiff:
                 self.noDataValue = ultimaBanda.GetNoDataValue()  # take any band
 
                 # Pix4DMatic injects an erroneous 'nan' value as noData attribute
-                if (math.isnan(self.noDataValue)):
+                if ((self.noDataValue != None) & (math.isnan(self.noDataValue))):
                     self.noDataValue = 0
 
                 filenameHasMapId = params.filename_prefix in file
@@ -185,6 +185,9 @@ class ConvertGeotiff:
             tmpWarp = TEMP_FOLDER + "\\" + file
             file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
+        if (params.outlines['enabled'] and not self.isMDE):
+            self.exportOutline(file_ds)
+
         outputFilename = f'{self.outputFilename}.tif'
 
         gdaloutput = params.geoserver['output_folder'] if not self.isMDE else params.geoserverMDE['output_folder']
@@ -205,9 +208,6 @@ class ConvertGeotiff:
             kwargs['maskBand'] = 4
 
         file_ds = gdal.Translate(gdaloutput, file_ds, **kwargs)
-
-        if (params.outlines['enabled'] and not self.isMDE):
-            self.exportOutline(file_ds)
 
         if (params.geoserver['overviews']):
             self.createOverviews(file_ds)
