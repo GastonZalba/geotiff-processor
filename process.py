@@ -89,7 +89,7 @@ class ConvertGeotiff:
                 self.noDataValue = ultimaBanda.GetNoDataValue()  # take any band
 
                 # Pix4DMatic injects an erroneous 'nan' value as noData attribute
-                if ((self.noDataValue != None) & (math.isnan(self.noDataValue))):
+                if ((self.noDataValue != None) and (math.isnan(self.noDataValue))):
                     self.noDataValue = 0
 
                 filenameHasMapId = params.filename_prefix in file
