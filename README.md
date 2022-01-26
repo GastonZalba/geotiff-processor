@@ -32,6 +32,17 @@ El script crea los siguientes archivos optimizados:
 ## Configuración
 - De ser necesario modificar archivo `params.py` según formatos de exportación, metadata y carpetas.
 
+## Combinación de múltiples tiles/mapeos en un solo VRT
+- Primero, separar por carpetas el agrupamiento de imágenes deseado
+- Desde consola generarmos una lista con todos los tif contenidos allí ejecutando por cada cada carpeta:
+    - `cmd /r dir /B /S *.tif > list.txt`
+    - NOTA: Si se hace desde PowerShell y el .txt no es utf-8, ejecutar `$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'` y volver a hacer el paso anterior.
+- En el archivo `list.txt` figurará el listado con las rutas absolutas a cada una de las imágenes.
+- Desde consola, ejecutar `gdalbuildvrt -input_file_list list.txt mosaic.vrt` para generar el archivo mosaic.vrt que contendrá referencias a cada una de las imágenes originales.
+- Mover el archivo mosaic.vrt a la carpeta `input` y aplicar nomenclatura/nombrado habitual.
+- Nota: tener en cuenta que el archivo .vrt solo linkea a las imágenes originales, por lo que deben conservarse los archivos originales para que este pueda usarse.
+
+
 ## TODO
 - Subir automáticamente los archivos storage a la red
 - Escribir directamente en base de datos lo que se guarda en la carpeta _database_
