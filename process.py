@@ -71,83 +71,84 @@ class ConvertGeotiff:
             for file in files:
                 filepath = subdir + os.sep + file
 
-                if (file.endswith(".tif") | file.endswith(".tiff")):
+                if (file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")):
                     try:
                         file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
+                        # Number of bands
+                        bandas = file_ds.RasterCount
+                        self.isMDE = bandas <= 2
+
+                        ultimaBanda = file_ds.GetRasterBand(bandas)
+                        self.tieneCanalAlfa = (
+                            ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
+                        self.noDataValue = ultimaBanda.GetNoDataValue()  # take any band
+
+                        # Pix4DMatic injects an erroneous 'nan' value as noData attribute
+                        if ((self.noDataValue != None) and (math.isnan(self.noDataValue))):
+                            self.noDataValue = 0
+
+                        filenameHasMapId = params.filename_prefix in file
+
+                        if (self.isMDE):
+                            # Generating output filename for DME case
+                            self.mapId = h.removeExtension(file.split(
+                                params.filename_prefix)[1].split(params.filename_suffix)[0]) if filenameHasMapId else h.createMapId()
+
+                            self.registroid = file.split(
+                                params.filename_prefix)[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file.split(params.filename_suffix)[0]))
+                        else:
+                            self.mapId = h.removeExtension(
+                                file.split(params.filename_prefix)[1]) if filenameHasMapId else h.createMapId()
+
+                            self.registroid = file.split(
+                                "_")[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file))
+
+                        output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
+
+                        # Create parent folder for mapId
+                        self.outputFolder = f'{params.output_folder_storage}/{output}'
+                        h.createFolder(self.outputFolder)
+
+                        self.outputFilename = output if not self.isMDE else '{}{}'.format(
+                            output, params.filename_suffix)
+
+                        # File GSD
+                        gt = file_ds.GetGeoTransform()
+                        self.pixelSizeX = gt[1]
+                        self.pixelSizeY = -gt[5]
+
+                        # file's GSD: get average x and y values
+                        self.originalGsd = round(
+                            (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
+
+                        # File Projection
+                        self.epsg = h.getEPSGCode(file_ds)
+
+                        self.date = h.getDateFromMetadata(file_ds)
+
+                        self.extra_metadata = params.metadata
+
+                        self.extra_metadata.append(
+                            'registroId={}'.format(self.registroid))
+
+                        self.extra_metadata.append('mapId={}'.format(self.mapId))
+
+                        print('Exporting storage files...')
+                        self.exportStorageFiles(file_ds)
+
+                        print('Exporting geoserver files...')
+                        self.exportGeoserverFiles(file_ds, file)
+
+                        # Once we're done, close properly the dataset
+                        file_ds = None
+
+                        print('--> Operation finished')
+                        
                     except RuntimeError as e:
                         print(f'Unable to open {filepath}')
                         print(e)
                         sys.exit(1)
-
-                # Number of bands
-                bandas = file_ds.RasterCount
-                self.isMDE = bandas <= 2
-
-                ultimaBanda = file_ds.GetRasterBand(bandas)
-                self.tieneCanalAlfa = (
-                    ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
-                self.noDataValue = ultimaBanda.GetNoDataValue()  # take any band
-
-                # Pix4DMatic injects an erroneous 'nan' value as noData attribute
-                if ((self.noDataValue != None) and (math.isnan(self.noDataValue))):
-                    self.noDataValue = 0
-
-                filenameHasMapId = params.filename_prefix in file
-
-                if (self.isMDE):
-                    # Generating output filename for DME case
-                    self.mapId = h.removeExtension(file.split(
-                        params.filename_prefix)[1].split(params.filename_suffix)[0]) if filenameHasMapId else h.createMapId()
-
-                    self.registroid = file.split(
-                        params.filename_prefix)[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file.split(params.filename_suffix)[0]))
-                else:
-                    self.mapId = h.removeExtension(
-                        file.split(params.filename_prefix)[1]) if filenameHasMapId else h.createMapId()
-
-                    self.registroid = file.split(
-                        "_")[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file))
-
-                output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
-
-                # Create parent folder for mapId
-                self.outputFolder = f'{params.output_folder_storage}/{output}'
-                h.createFolder(self.outputFolder)
-
-                self.outputFilename = output if not self.isMDE else '{}{}'.format(
-                    output, params.filename_suffix)
-
-                # File GSD
-                gt = file_ds.GetGeoTransform()
-                self.pixelSizeX = gt[1]
-                self.pixelSizeY = -gt[5]
-
-                # file's GSD: get average x and y values
-                self.originalGsd = round(
-                    (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
-
-                # File Projection
-                self.epsg = h.getEPSGCode(file_ds)
-
-                self.date = h.getDateFromMetadata(file_ds)
-
-                self.extra_metadata = params.metadata
-
-                self.extra_metadata.append(
-                    'registroId={}'.format(self.registroid))
-
-                self.extra_metadata.append('mapId={}'.format(self.mapId))
-
-                print('Exporting storage files...')
-                self.exportStorageFiles(file_ds)
-
-                print('Exporting geoserver files...')
-                self.exportGeoserverFiles(file_ds, file)
-
-                # Once we're done, close properly the dataset
-                file_ds = None
-
-                print('--> Operation finished')
+            
 
     def exportGeoserverFiles(self, file_ds, file):
 
@@ -446,8 +447,12 @@ class ConvertGeotiff:
         colorValues = []
 
         array = np.array(geotiff.GetRasterBand(1).ReadAsArray())
+        
+        print('1', array)
 
         array = np.array(array.flat)
+
+        print('flat', array)
 
         # Remove NoDataValue, it doesn't mess up the percentage calculation
         if (params.styleMDE['disregard_values_less_than_0']):
@@ -460,7 +465,7 @@ class ConvertGeotiff:
 
         # remove nan values
         array = np.nan_to_num(array)
-
+        
         # similar to "Cumulative cut count" (Qgis)
         trimmedMin = np.percentile(
             array,
