@@ -1,4 +1,7 @@
-# original tif files
+import tempfile
+
+tmp_folder = tempfile.gettempdir()
+
 input_folder = 'input'
 output_folder = 'output'
 
@@ -26,28 +29,17 @@ geoserver = {
     'epsg': 3857,
     'output_folder': output_folder_geoserver + '/rgb',
     'gsd': 20,  # cm
-    'overviews': True,
-    'creationOptions': [
-        'JPEG_QUALITY=80',
-        'BIGTIFF=IF_NEEDED',  # for files larger than 4 GB
-        'TFW=NO',
-        'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
-        'PHOTOMETRIC=YCBCR',  # switches the photometric interpretation to the yCbCr color space, which allows a significant further reduction in output size with minimal changes on the images
-        'COMPRESS=JPEG',
-        # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
-    ]
+    'overviews': True
 }
 
-geoserverMDE = {
+geoserverDEM = {
     'output_folder': output_folder_geoserver + '/mde',
-    'gsd': 50,  # cm
-    'creationOptions': [
-        'BIGTIFF=YES',  # for files larger than 4 GB
-        'TFW=NO',
-        'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
-        'PHOTOMETRIC=MINISBLACK',
-        'COMPRESS=DEFLATE',
-    ]
+    'gsd': 50  # cm
+}
+
+geoserverDEMRGB = {
+    'output_folder': output_folder_geoserver + '/mde_rgb',
+    'gsd': 50  # cm
 }
 
 storage = {
@@ -55,27 +47,11 @@ storage = {
     'overviews': True,
     'exportJSON': True,  # To export a JSON data file
     'previews': True,
-    'creationOptions': [
-        'JPEG_QUALITY=80',
-        'BIGTIFF=YES',
-        'TFW=YES',
-        'TILED=YES',
-        'PHOTOMETRIC=YCBCR',
-        'COMPRESS=JPEG',
-    ]
 }
 
-storageMDE = {
-    'gsd': 20,  # cm
-    'creationOptions': [
-        'BIGTIFF=YES',  # for files larger than 4 GB
-        'TFW=NO',
-        'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
-        'PHOTOMETRIC=MINISBLACK',
-        'COMPRESS=DEFLATE',
-    ]
+storageDEM = {
+    'gsd': 20  # cm
 }
-
 
 storagePreview = {
     'width': 650,  # px
@@ -87,10 +63,10 @@ storagePreview = {
     ]
 }
 
-styleMDE = {
-    
-    # Remove negative values from mde from the style calculations. Otherwhise, removes only the noData values.
-    # This can be used if the mde has some processing errors/holes
+styleDEM = {
+
+    # Remove negative values from dem from the style calculations. Otherwhise, removes only the noData values.
+    # This can be used if the dem has some processing errors/holes
     'disregard_values_less_than_0': True,
 
     # similar to "Cumulative cut count" (Qgis)

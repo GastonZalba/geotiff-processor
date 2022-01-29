@@ -3,6 +3,14 @@ import secrets
 from pathlib import Path
 from datetime import datetime
 from osgeo import osr
+import numpy as np
+import math
+from osgeo import gdal, osr
+
+import params as params
+
+TEMP_FOLDER = params.tmp_folder
+
 
 def createFolder(folderPath):
     Path(folderPath).mkdir(
@@ -10,8 +18,10 @@ def createFolder(folderPath):
         exist_ok=True
     )
 
+
 def removeExtension(filename):
     return os.path.splitext(filename)[0]
+
 
 def getDateFromMetadata(file_ds):
     '''
@@ -28,10 +38,12 @@ def getDateFromMetadata(file_ds):
     else:
         return None
 
+
 def getEPSGCode(file_ds):
     prj = file_ds.GetProjection()
     srs = osr.SpatialReference(wkt=prj)
     return int(srs.GetAttrValue('AUTHORITY', 1))
+
 
 def cleanFilename(filename):
     '''
@@ -43,9 +55,106 @@ def cleanFilename(filename):
 
     return filename
 
+
+def addOverviews(ds):
+    print('Adding overviews...')
+    '''
+    Overviews are duplicate versions of your original data, but resampled to a lower resolution
+    By default, overviews take the same compression type and transparency masks of the input dataset.
+
+    This allow to speedup opening and viewing the files on QGis, Autocad, Geoserver, etc.
+    '''
+    ds.BuildOverviews("AVERAGE", [2, 4, 8, 16, 32, 64, 128, 256])
+
+
 def createMapId():
     '''
     Random hash to be used as the map id
     https://docs.python.org/3/library/secrets.html
     '''
     return secrets.token_hex(nbytes=6)
+
+
+def calculateDEMColorValues(self, geotiff):
+    '''
+    Create a color palette to use as a .txt, considering the elevation values
+    '''
+
+    colorValues = []
+
+    array = np.array(geotiff.GetRasterBand(1).ReadAsArray())
+
+    array = np.array(array.flat)
+
+    print('Evaluating DEM values:')
+
+    # Remove NoDataValue, it doesn't mess up the percentage calculation
+    if (params.styleDEM['disregard_values_less_than_0']):
+        array = np.ma.masked_less(array, 0, False)
+        array = array.compressed()
+    else:
+        if (self.noDataValue != 'none'):
+            array = np.ma.masked_equal(array, self.noDataValue, False)
+            array = array.compressed()
+
+    # remove nan values
+    array = np.nan_to_num(array)
+
+    # similar to "Cumulative cut count" (Qgis)
+    trimmedMin = np.percentile(
+        array,
+        params.styleDEM['min_percentile']
+    )
+    print('-> Trimmed Min:', trimmedMin)
+
+    trimmedMax = np.percentile(
+        array,
+        params.styleDEM['max_percentile']
+    )
+    print('-> Trimmed Max:', trimmedMax)
+
+    if (math.isnan(trimmedMax) or math.isnan(trimmedMin)):
+        raise RuntimeError('Reading nan values')
+
+    per = ((trimmedMax / 2) - (trimmedMin / 2)) / 7
+
+    cont = 0
+    while(cont < 7):
+        colorValues.append(trimmedMin)
+        trimmedMin += per
+        if (cont == 1):
+            trimmedMin += per
+        elif (cont == 3):
+            trimmedMin += per * 3
+        elif (cont == 4 or cont == 5):
+            trimmedMin += per * 2
+        cont += 1
+
+    return colorValues
+
+
+def getLightVersion(file_ds):
+    '''
+    create a lightweight version to be used in some fast operations
+    like previews, mde stats, etc.
+    '''
+
+    print('Generating lightweight version...')
+
+    # tmp file
+    tmpGeotiffCompressed = '{}\\compress.tif'.format(TEMP_FOLDER)
+
+    geotiff = gdal.Warp(
+        tmpGeotiffCompressed,
+        file_ds,
+        **{
+            'format': 'GTiff',
+            'xRes': 0.3,
+            'yRes': 0.3
+        }
+    )
+
+    # clean the temp file
+    del tmpGeotiffCompressed
+
+    return geotiff
