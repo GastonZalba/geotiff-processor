@@ -1,4 +1,5 @@
 from osgeo import gdal
+from helpers import addOverviews
 import params as params
 
 TEMP_FOLDER = params.tmp_folder
@@ -11,7 +12,7 @@ def exportStorageDEM(self, file_ds):
 
     gdaloutput = '{}/{}'.format(gdaloutput, outputFilename)
 
-    print(f'Exporting {gdaloutput}')
+    print(f'-> Exporting {gdaloutput}')
 
     tmpWarp = None
     
@@ -23,7 +24,7 @@ def exportStorageDEM(self, file_ds):
         'yRes': params.storageDEM['gsd']/100,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'srcNodata': 'none' if self.tieneCanalAlfa else self.noDataValue
+        'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
     }
 
     # change all tiff noData values to the same value
@@ -31,7 +32,7 @@ def exportStorageDEM(self, file_ds):
         kwargs['dstNodata'] = params.no_data
         warp = True
         print(
-            f'Changing noData value from {self.noDataValue} to {params.no_data}')
+            f'-> Changing noData value from {self.noDataValue} to {params.no_data}')
 
     if (warp):
         tmpWarp = f'{TEMP_FOLDER}\\file_ds'
@@ -49,9 +50,12 @@ def exportStorageDEM(self, file_ds):
         ],
         'metadataOptions': self.extra_metadata,
         # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'noData': 'none' if self.tieneCanalAlfa else params.no_data
+        'noData': 'none' if self.hasAlphaChannel else params.no_data
     }
 
     geotiff = gdal.Translate(gdaloutput, file_ds, **kwargs)
+    
+    if (params.storageDEM['overviews']):
+        addOverviews(geotiff)
 
     return geotiff

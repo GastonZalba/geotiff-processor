@@ -10,7 +10,7 @@ output_folder_database = f'{output_folder}/database'
 output_folder_geoserver = f'{output_folder}/geoserver'
 
 filename_prefix = '_MapId-'
-filename_suffix = '_mde'
+dem_suffix = '_mde'
 outline_suffix = '_outline'
 gdalinfo_suffix = '_gdalinfo'
 preview_suffix = '_preview'
@@ -20,47 +20,70 @@ clean_output_folder = True
 
 no_data = -10000
 
+overviews = [2, 4, 8, 16, 32, 64, 128, 256]
+
+geoserver_epsg = 3857
+
 # https://gdal.org/drivers/raster/gtiff.html#metadata
 metadata = [
     'TIFFTAG_ARTIST=Dirección Provincial de Hidráulica, Provincia de Buenos Aires'
 ]
 
-geoserver = {
-    'epsg': 3857,
+geoserverRGB = {
+    'enabled': True,
     'output_folder': output_folder_geoserver + '/rgb',
     'gsd': 20,  # cm
-    'overviews': True
+    'overviews': True,
+
+    'outlines': {
+        'enabled': True,
+
+        # Polygons bigger than this area are preserved in the outlines
+        'minimum_area': 10,  # m2
+
+        # Use to simplify the geometry
+        # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Simplify
+        'simplify': 1,
+
+        # Use to fix some geometry errors on the vector
+        # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Buffer
+        'buffer': 0
+    }
 }
 
 geoserverDEM = {
+    'enabled': True,
     'output_folder': output_folder_geoserver + '/mde',
+    'overviews': True,
     'gsd': 50  # cm
 }
 
 geoserverDEMRGB = {
+    'enabled': True,
     'output_folder': output_folder_geoserver + '/mde_rgb',
-    'gsd': 50  # cm
+    'overviews': True
 }
 
-storage = {
+storageRGB = {
+    'enabled': True,
     'gsd': None,  # None to use original | cm
-    'overviews': True,
-    'exportJSON': True,  # To export a JSON data file
-    'previews': True,
+    'overviews': True
 }
 
 storageDEM = {
-    'gsd': 20  # cm
+    'enabled': True,
+    'gsd': 20,  # cm
+    'overviews': True,
+    'quantities': True
 }
 
-storagePreview = {
-    'width': 650,  # px
-    # https://gdal.org/drivers/raster/jpeg.html
-    'format': 'JPEG',
-    'creationOptions': [
-        'PROGRESSIVE=ON',  # better for web
-        'QUALITY=75',
-    ]
+gdalinfo = {
+    'enabled': True  # To export a JSON data file
+}
+
+previews = {
+    'enabled': True,
+    'width': 650  # px
 }
 
 styleDEM = {
@@ -73,8 +96,6 @@ styleDEM = {
     'min_percentile': 0.5,
     'max_percentile': 96,
 
-    'export_quantities': True,
-
     # min to max
     'palette': [
         "#0000bb",
@@ -85,19 +106,4 @@ styleDEM = {
         "#ff8602",
         "#b20006"
     ]
-}
-
-outlines = {
-    'enabled': True,
-
-    # Polygons bigger than this area are preserved in the outlines
-    'minimum_area': 10,  # m2
-
-    # Use to simplify the geometry
-    # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Simplify
-    'simplify': 1,
-
-    # Use to fix some geometry errors on the vector
-    # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Buffer
-    'buffer': 0
 }

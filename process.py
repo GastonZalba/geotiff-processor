@@ -3,6 +3,7 @@ import os
 import shutil
 from pathlib import Path
 import math
+from export_formats.storageRGB import exportStorageRGB
 
 import params as params
 import helpers as h
@@ -39,6 +40,8 @@ class ConvertGeotiff:
 
         version_num = int(gdal.VersionInfo('VERSION_NUM'))
         print(f'GDAL Version: {version_num}')
+        
+        print('OPERATION STARTED')
 
         # Allows GDAL to throw Python Exceptions
         gdal.UseExceptions()
@@ -48,42 +51,48 @@ class ConvertGeotiff:
         self.checkDirectories()
         self.processTifs()
 
+        print('OPERATION FINISHED')
+
     def checkDirectories(self):
         '''
-        Create folders if no exists
+        Create folders and remove older files
         '''
 
         if params.clean_output_folder:
             if os.path.exists(params.output_folder):
+                print('-> Removing older files')
                 shutil.rmtree(Path(params.output_folder))
+        
+        print('-> Creating folders')
 
         h.createFolder(params.output_folder_database)
 
         h.createFolder(params.output_folder_storage)
 
         # geoserver folders
-        h.createFolder(params.geoserver['output_folder'])
+        h.createFolder(params.geoserverRGB['output_folder'])
         h.createFolder(params.geoserverDEM['output_folder'])
         h.createFolder(params.geoserverDEMRGB['output_folder'])
 
     def processTifs(self):
 
-        # Find all .tif extensions in the inout folder
+        # Find files in the input folder
         for subdir, dirs, files in os.walk(params.input_folder):
             for file in files:
                 filepath = subdir + os.sep + file
 
                 if (file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")):
                     try:
+                        
                         file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
                         # Number of bands
-                        bandas = file_ds.RasterCount
-                        self.isDEM = bandas <= 2
+                        bands = file_ds.RasterCount
+                        self.isDEM = bands <= 2
 
-                        ultimaBanda = file_ds.GetRasterBand(bandas)
-                        self.tieneCanalAlfa = (
-                            ultimaBanda.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
-                        self.noDataValue = ultimaBanda.GetNoDataValue()  # take any band
+                        lastBand = file_ds.GetRasterBand(bands)
+                        self.hasAlphaChannel= (
+                            lastBand.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
+                        self.noDataValue = lastBand.GetNoDataValue()  # take any band
 
                         # Pix4DMatic injects an erroneous 'nan' value as noData attribute
                         if ((self.noDataValue != None) and (math.isnan(self.noDataValue))):
@@ -92,13 +101,19 @@ class ConvertGeotiff:
                         filenameHasMapId = params.filename_prefix in file
 
                         if (self.isDEM):
+
+                            print(f'-> File {file} is DEM type')
+
                             # Generating output filename for DME case
                             self.mapId = h.removeExtension(file.split(
-                                params.filename_prefix)[1].split(params.filename_suffix)[0]) if filenameHasMapId else h.createMapId()
+                                params.filename_prefix)[1].split(params.dem_suffix)[0]) if filenameHasMapId else h.createMapId()
 
                             self.registroid = file.split(
-                                params.filename_prefix)[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file.split(params.filename_suffix)[0]))
+                                params.filename_prefix)[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file.split(params.dem_suffix)[0]))
                         else:
+
+                            print(f'-> File {file} is RGB type')
+
                             self.mapId = h.removeExtension(
                                 file.split(params.filename_prefix)[1]) if filenameHasMapId else h.createMapId()
 
@@ -106,13 +121,15 @@ class ConvertGeotiff:
                                 "_")[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file))
 
                         output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
-
+                        
                         # Create parent folder for mapId
                         self.outputFolder = f'{params.output_folder_storage}/{output}'
                         h.createFolder(self.outputFolder)
 
                         self.outputFilename = output if not self.isDEM else '{}{}'.format(
-                            output, params.filename_suffix)
+                            output, params.dem_suffix)
+                        
+                        print(f'-> Files for {self.outputFilename} will be exported')
 
                         # File GSD
                         gt = file_ds.GetGeoTransform()
@@ -141,58 +158,60 @@ class ConvertGeotiff:
 
                         # Once we're done, close properly the dataset
                         file_ds = None
-
-                        print('--> Operation finished')
                         
                     except RuntimeError as e:
-                        print(f'Unable to open {filepath}')
+                        print(f'ERROR: Unable to open {filepath}')
                         print(e)
                         sys.exit(1)
             
-
-    def exportGeoserverFiles(self, file_ds, file):
-
-        print('Exporting geoserver files...')
-
-        print(f'Converting {file}...')
-
-        if (self.isDEM):
-            exportGeoserverDEM(self, file_ds, file)
-        else:
-            exportGeoserverRGB(self, file_ds, file)
-
-
+    
     def exportStorageFiles(self, file_ds):
         '''
         Export high and low res files
         '''
         
-        print('Exporting storage files...')
+        print('EXPORTING STORAGE FILES')
         
+        geotiff = None
         self.compressedGeotiff = h.getLightVersion(file_ds)    
 
         if (self.isDEM):
-   
-            self.colorValues = h.calculateDEMColorValues(self, self.compressedGeotiff)
-            
-            geotiff = exportStorageDEM(self, file_ds)
+            if params.storageDEM['enabled']:   
+                self.colorValues = h.calculateDEMColorValues(self, self.compressedGeotiff)
+                
+                geotiff = exportStorageDEM(self, file_ds)
 
-            if params.styleDEM['export_quantities']:
-                exportQuantities(self)
+                if params.storageDEM['quantities']:
+                    exportQuantities(self)
 
         else:
-            geotiff = exportGeoserverRGB(self, file_ds)
+            if params.storageRGB['enabled']:   
+                geotiff = exportStorageRGB(self, file_ds)
 
-        if (params.storage['overviews']):
-            h.addOverviews(geotiff)
+        # if not storage export is enabled, return None
+        if not geotiff:
+            return None
 
-        if ((params.storage['exportJSON'])):
+        if ((params.gdalinfo['enabled'])):
             exportGdalinfo(self, geotiff)
 
-        if (params.storage['previews']):
+        if (params.previews['enabled']):
             exportStoragePreview(self, self.compressedGeotiff)
 
         return geotiff
 
+
+    def exportGeoserverFiles(self, file_ds, file):
+
+        print('EXPORTING GEOSERVER FILES')
+
+        if (self.isDEM):
+            if (params.geoserverDEM['enabled'] or params.geoserverDEMRGB['enabled']):
+                exportGeoserverDEM(self, file_ds, file)
+        else:
+            if (params.geoserverRGB['enabled']):
+                exportGeoserverRGB(self, file_ds, file)
+
+  
 
 ConvertGeotiff()

@@ -14,11 +14,11 @@ def exportGeoserverRGB(self, file_ds, file):
 
     kwargs = {
         'format': 'GTiff',
-        'xRes': params.geoserver['gsd']/100,
-        'yRes': params.geoserver['gsd']/100,
+        'xRes': params.geoserverRGB['gsd']/100,
+        'yRes': params.geoserverRGB['gsd']/100,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'srcNodata': 'none' if self.tieneCanalAlfa else self.noDataValue
+        'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
     }
 
     # change all tiff noData values to the same value
@@ -26,26 +26,26 @@ def exportGeoserverRGB(self, file_ds, file):
         kwargs['dstNodata'] = params.no_data
         warp = True
         print(
-            f'Changing noData value from {self.noDataValue} to {params.no_data}')
+            f'-> Changing noData value from {self.noDataValue} to {params.no_data}')
 
     # if file has diferent epsg, convert
-    if (self.epsg != params.geoserver['epsg']):
+    if (self.epsg != params.geoserver_epsg):
         kwargs['srcSRS'] = 'EPSG:{}'.format(self.epsg)
-        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserver['epsg'])
+        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserverRGB['epsg'])
         warp = True
         print(
-            f'Transforming EPSG:{self.epsg} to EPSG:{params.geoserver["epsg"]}')
+            f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserverRGB["epsg"]}')
 
     if (warp):
         tmpWarp = TEMP_FOLDER + "\\" + file
         file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
-    if (params.outlines['enabled']):
+    if (params.geoserverRGB['outlines']['enabled']):
         exportOutline(self, file_ds)
 
     outputFilename = f'{self.outputFilename}.tif'
 
-    gdaloutput = f'{params.geoserver["output_folder"]}/{outputFilename}'
+    gdaloutput = f'{params.geoserverRGB["output_folder"]}/{outputFilename}'
 
     kwargs = {
         'format': 'GTiff',
@@ -60,16 +60,16 @@ def exportGeoserverRGB(self, file_ds, file):
             # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
         ],
         'maskBand': 4,
-        'xRes': params.geoserver['gsd']/100,
-        'yRes': params.geoserver['gsd']/100,
+        'xRes': params.geoserverRGB['gsd']/100,
+        'yRes': params.geoserverRGB['gsd']/100,
         'metadataOptions': self.extra_metadata,
         # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'noData': 'none' if self.tieneCanalAlfa else params.no_data,
+        'noData': 'none' if self.hasAlphaChannel else params.no_data,
     }
 
     file_ds = gdal.Translate(gdaloutput, file_ds, **kwargs)
 
-    if (params.geoserver['overviews']):
+    if (params.geoserverRGB['overviews']):
         addOverviews(file_ds)
 
     file_ds = None

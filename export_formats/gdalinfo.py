@@ -10,7 +10,7 @@ def exportGdalinfo(self, ds):
 
     gdaloutput = f'{params.output_folder_database}/{self.outputFilename}{params.gdalinfo_suffix}.json'
 
-    print(f'Exporting gdalinfo data {gdaloutput}')
+    print(f'-> Exporting gdalinfo data {gdaloutput}')
 
     # https://gdal.org/python/osgeo.gdal-module.html#InfoOptions
 

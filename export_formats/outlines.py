@@ -9,10 +9,14 @@ def exportOutline(self, file_ds):
     Export a vector file with the raster's outline. This file
     must be uploaded to the wms layer in the geoserver
     '''
-
+    
+    # Final vector file
+    gdaloutput = f'{params.output_folder_database}/{self.outputFilename}.geojson'
+    print(f'-> Exporting outline {gdaloutput}')
+    
     geoDriver = ogr.GetDriverByName("GeoJSON")
     srs = osr.SpatialReference()
-    res = srs.ImportFromEPSG(params.geoserver['epsg'])
+    res = srs.ImportFromEPSG(params.geoserverRGB['epsg'])
 
     if res != 0:
         raise RuntimeError(repr(res) + ': EPSG not found')
@@ -36,11 +40,6 @@ def exportOutline(self, file_ds):
 
     tmpOutDatasource = None
 
-    # Final vector file
-    gdaloutput = f'{params.output_folder_database}/{self.outputFilename}.geojson'
-
-    print(f'Exporting outline {self.outputFilename}')
-
     if os.path.exists(gdaloutput):
         geoDriver.DeleteDataSource(gdaloutput)
 
@@ -61,7 +60,7 @@ def exportOutline(self, file_ds):
 
         # Only keep bigger polygons
         if area > params.outlines['minimum_area']:
-            print('Polygon area in m2:', area)
+            print('--> Polygon area in m2:', area)
             # Clone to prevent multiiple GDAL bugs
             biggerGeoms.append(geom.Clone())
 
@@ -81,7 +80,7 @@ def exportOutline(self, file_ds):
     mergedGeom = mergedGeom.MakeValid()
 
     if mergedGeom.IsValid() != True:
-        print('Invalid geometry')
+        print('-> ERROR: Invalid geometry')
 
     else:
 
@@ -89,7 +88,7 @@ def exportOutline(self, file_ds):
         simplifyGeom = simplificarGeometria(mergedGeom)
 
         if str(simplifyGeom) == 'POLYGON EMPTY':
-            print('Error on reading POLYGON')
+            print('-> Error on reading POLYGON')
 
         else:
 

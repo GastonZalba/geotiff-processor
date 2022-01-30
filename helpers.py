@@ -56,15 +56,15 @@ def cleanFilename(filename):
     return filename
 
 
-def addOverviews(ds):
-    print('Adding overviews...')
+def addOverviews(gdal_dataset):
+    print('-> Adding overviews')
     '''
     Overviews are duplicate versions of your original data, but resampled to a lower resolution
     By default, overviews take the same compression type and transparency masks of the input dataset.
 
     This allow to speedup opening and viewing the files on QGis, Autocad, Geoserver, etc.
     '''
-    ds.BuildOverviews("AVERAGE", [2, 4, 8, 16, 32, 64, 128, 256])
+    gdal_dataset.BuildOverviews("AVERAGE", params.overviews)
 
 
 def createMapId():
@@ -86,7 +86,7 @@ def calculateDEMColorValues(self, geotiff):
 
     array = np.array(array.flat)
 
-    print('Evaluating DEM values:')
+    print('-> Evaluating DEM values:')
 
     # Remove NoDataValue, it doesn't mess up the percentage calculation
     if (params.styleDEM['disregard_values_less_than_0']):
@@ -105,13 +105,13 @@ def calculateDEMColorValues(self, geotiff):
         array,
         params.styleDEM['min_percentile']
     )
-    print('-> Trimmed Min:', trimmedMin)
+    print('--> Trimmed Min:', trimmedMin)
 
     trimmedMax = np.percentile(
         array,
         params.styleDEM['max_percentile']
     )
-    print('-> Trimmed Max:', trimmedMax)
+    print('--> Trimmed Max:', trimmedMax)
 
     if (math.isnan(trimmedMax) or math.isnan(trimmedMin)):
         raise RuntimeError('Reading nan values')
@@ -135,11 +135,11 @@ def calculateDEMColorValues(self, geotiff):
 
 def getLightVersion(file_ds):
     '''
-    create a lightweight version to be used in some fast operations
+    Creates a lightweight version to be used in some fast operations
     like previews, mde stats, etc.
     '''
 
-    print('Generating lightweight version...')
+    print('-> Generating lightweight version')
 
     # tmp file
     tmpGeotiffCompressed = '{}\\compress.tif'.format(TEMP_FOLDER)

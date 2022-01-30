@@ -1,5 +1,6 @@
 from osgeo import gdal
 import rasterio
+from rasterio.enums import Resampling
 import numpy as np
 
 import helpers as h
@@ -20,19 +21,19 @@ def exportGeoserverDEM(self, file_ds, file):
         'xRes': 0.1,
         'yRes': 0.1,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'srcNodata': 'none' if self.tieneCanalAlfa else self.noDataValue
+        'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
     }
 
     # change all tiff noData values to the same value
     if (kwargs['srcNodata'] != params.no_data and kwargs['srcNodata'] != 'none'):
         kwargs['dstNodata'] = params.no_data
-        print(f'Changing noData value from {self.noDataValue} to {params.no_data}')
+        print(f'-> Changing noData value from {self.noDataValue} to {params.no_data}')
 
     # if file has diferent epsg, convert
-    if (self.epsg != params.geoserver['epsg']):
+    if (self.epsg != params.geoserver_epsg):
         kwargs['srcSRS'] = 'EPSG:{}'.format(self.epsg)
-        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserver['epsg'])
-        print(f'Transforming EPSG:{self.epsg} to EPSG:{params.geoserver["epsg"]}')
+        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserver_epsg)
+        print(f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')
 
     tmpWarp = TEMP_FOLDER + "\\" + file
     
@@ -41,9 +42,11 @@ def exportGeoserverDEM(self, file_ds, file):
 
     outputFilename = f'{self.outputFilename}.tif'
 
-    _exportFloat(self, file_ds, outputFilename)
-
-    _exportRGB(self, tmpWarp, outputFilename)
+    if (params.geoserverDEM['enabled']):
+        _exportFloat(self, file_ds, outputFilename)
+    
+    if (params.geoserverDEMRGB['enabled']):
+        _exportRGB(self, tmpWarp, outputFilename)
 
     # Delete tmp files
     del tmpWarp
@@ -51,7 +54,7 @@ def exportGeoserverDEM(self, file_ds, file):
 
 def _exportFloat(self, file_ds, outputFilename):
 
-    print('Exporting geoserver DEM in 32 bits Float mode')
+    print('-> Exporting geoserver DEM in 32 bits float')
 
     gdaloutputDEM = f'{params.geoserverDEM["output_folder"]}/{outputFilename}'
 
@@ -68,12 +71,12 @@ def _exportFloat(self, file_ds, outputFilename):
         ],
         'metadataOptions': self.extra_metadata,
         # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'noData': 'none' if self.tieneCanalAlfa else params.no_data
+        'noData': 'none' if self.hasAlphaChannel else params.no_data
     }
 
     file_ds = gdal.Translate(gdaloutputDEM, file_ds, **kwargs)
 
-    if (params.geoserver['overviews']):
+    if (params.geoserverDEM['overviews']):
         h.addOverviews(file_ds)
     
     file_ds = None
@@ -85,7 +88,7 @@ def _exportRGB(self, tmpFile, outputFilename):
     Encode grayscale DEM to RGB using Mapbox codification
     https://docs.mapbox.com/data/tilesets/guides/access-elevation-data/
     '''
-    print('Exporting geoserver DEM in RGB mode')
+    print('-> Exporting geoserver DEM in RGB mode')
 
     gdaloutputDEMRGB = f'{params.geoserverDEMRGB["output_folder"]}/{outputFilename}'
 
@@ -105,9 +108,15 @@ def _exportRGB(self, tmpFile, outputFilename):
     meta['dtype'] = rasterio.uint8
     meta['nodata'] = 0 
     meta['count'] = 3
-    meta['driver'] = 'JPEG'
+    meta['driver'] = 'GTiff'
+    meta['compress'] = 'JPEG'
+    meta['JPEG_QUALITY'] = 100
 
     with rasterio.open(gdaloutputDEMRGB, 'w', **meta) as dst:
         dst.write_band(1, r.astype(rasterio.uint8))
         dst.write_band(2, g.astype(rasterio.uint8))
-        dst.write_band(3, b.astype(rasterio.uint8))    
+        dst.write_band(3, b.astype(rasterio.uint8))
+
+        if (params.geoserverDEMRGB['overviews']):
+            print('-> Adding overviews')
+            dst.build_overviews(params.overviews, Resampling.average)

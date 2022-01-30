@@ -7,6 +7,7 @@ import params as params
 
 TEMP_FOLDER = params.tmp_folder
 
+
 def exportStoragePreview(self, geotiff):
 
     # temporary disable the "auxiliary metadata" because JPG doesn't support it,
@@ -17,7 +18,7 @@ def exportStoragePreview(self, geotiff):
 
     gdaloutput = '{}/{}'.format(self.outputFolder, outputPreviewFilename)
 
-    print(f'Exporting preview {gdaloutput}')
+    print(f'-> Exporting preview {gdaloutput}')
 
     if (self.isDEM):
         geotiff = getColoredHillshade(self, geotiff)
@@ -26,9 +27,13 @@ def exportStoragePreview(self, geotiff):
         gdaloutput,
         geotiff,
         **{
-            'format': params.storagePreview['format'],
-            'width': params.storagePreview['width'],  # px
-            'creationOptions': params.storagePreview['creationOptions'],
+            # https://gdal.org/drivers/raster/jpeg.html
+            'format': 'JPEG',
+            'width': params.previews['width'],  # px
+            'creationOptions': [
+                'PROGRESSIVE=ON', # better for web
+                'QUALITY=75',
+            ],
             # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
             'noData': 'none'
         }
@@ -123,4 +128,3 @@ def getColoredHillshade(self, geotiff):
     os.remove(tmpColoredHillshade)
 
     return tmpColoredHillshadeContrast
-
