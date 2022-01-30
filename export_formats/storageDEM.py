@@ -1,6 +1,8 @@
 from osgeo import gdal
+
 from helpers import addOverviews
 import params as params
+from export_formats.gdalinfo import exportGdalinfo
 
 TEMP_FOLDER = params.tmp_folder
 
@@ -55,7 +57,10 @@ def exportStorageDEM(self, file_ds):
 
     geotiff = gdal.Translate(gdaloutput, file_ds, **kwargs)
     
-    if (params.storageDEM['overviews']):
+    if params.storageDEM['overviews']:
         addOverviews(geotiff)
+    
+    if params.storageDEM['gdalinfo']:
+        exportGdalinfo(self, geotiff)
 
     return geotiff

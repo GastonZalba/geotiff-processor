@@ -12,7 +12,7 @@ def exportGeoserverDEM(self, file_ds, file):
     ''''
     Exports two geoserver versions:
     - 32 bits float
-    - RGB Mapbox color conversion
+    - RGB color conversion
     '''
 
     kwargs = {
@@ -35,7 +35,7 @@ def exportGeoserverDEM(self, file_ds, file):
         kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserver_epsg)
         print(f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')
 
-    tmpWarp = TEMP_FOLDER + "\\" + file
+    tmpWarp = TEMP_FOLDER + "\\geoserverWarp.tif"
     
     # Use the warp to convert projections, change the GSD and correct the noData values
     file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
@@ -47,9 +47,6 @@ def exportGeoserverDEM(self, file_ds, file):
     
     if (params.geoserverDEMRGB['enabled']):
         _exportRGB(self, tmpWarp, outputFilename)
-
-    # Delete tmp files
-    del tmpWarp
 
 
 def _exportFloat(self, file_ds, outputFilename):
@@ -85,9 +82,18 @@ def _exportFloat(self, file_ds, outputFilename):
 def _exportRGB(self, tmpFile, outputFilename):
 
     '''
-    Encode grayscale DEM to RGB using Mapbox codification
+    Encode grayscale DEM to RGB using:
+    
+    - Mapbox codification
+    elevation = -10000 + ((red * 256 * 256 + green * 256 + blue) * 0.1)
     https://docs.mapbox.com/data/tilesets/guides/access-elevation-data/
+
+    - Terrarium codification
+    elevation = (red * 256 + green + blue / 256) - 32768
+    https://www.mapzen.com/blog/terrain-tile-service/
+
     '''
+
     print('-> Exporting geoserver DEM in RGB mode')
 
     gdaloutputDEMRGB = f'{params.geoserverDEMRGB["output_folder"]}/{outputFilename}'
@@ -100,9 +106,17 @@ def _exportRGB(self, tmpFile, outputFilename):
     g = np.zeros(shape)
     b = np.zeros(shape)
 
-    r += np.floor_divide((100000 + dem * 10), 65536)
-    g += np.floor_divide((100000 + dem * 10), 256) - r * 256
-    b += np.floor(100000 + dem * 10) - r * 65536 - g * 256
+    if params.geoserverDEMRGB['encoding'] == 'mapbox':
+
+        r += np.floor_divide((100000 + dem * 10), 65536)
+        g += np.floor_divide((100000 + dem * 10), 256) - r * 256
+        b += np.floor(100000 + dem * 10) - r * 65536 - g * 256
+
+    elif params.geoserverDEMRGB['encoding'] == 'terrarium':
+        dem += 32768
+        r += np.floor_divide(dem, 256)
+        g += np.mod(dem, 256)
+        b += np.floor((dem - np.floor(dem)) * 256)
 
     meta = src.meta
     meta['dtype'] = rasterio.uint8

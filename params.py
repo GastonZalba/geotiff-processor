@@ -1,6 +1,6 @@
 import tempfile
 
-tmp_folder = tempfile.gettempdir()
+tmp_folder = f'{tempfile.gettempdir()}/geotiff-processor'
 
 input_folder = 'input'
 output_folder = 'output'
@@ -61,24 +61,23 @@ geoserverDEM = {
 geoserverDEMRGB = {
     'enabled': True,
     'output_folder': output_folder_geoserver + '/mde_rgb',
-    'overviews': True
+    'overviews': True,
+    'encoding': 'mapbox' # mapbox | terrarium
 }
 
 storageRGB = {
     'enabled': True,
     'gsd': None,  # None to use original | cm
-    'overviews': True
+    'overviews': True,
+    'gdalinfo': True
 }
 
 storageDEM = {
     'enabled': True,
     'gsd': 20,  # cm
     'overviews': True,
-    'quantities': True
-}
-
-gdalinfo = {
-    'enabled': True  # To export a JSON data file
+    'quantities': True,
+    'gdalinfo': True
 }
 
 previews = {

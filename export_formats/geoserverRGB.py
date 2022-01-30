@@ -31,13 +31,13 @@ def exportGeoserverRGB(self, file_ds, file):
     # if file has diferent epsg, convert
     if (self.epsg != params.geoserver_epsg):
         kwargs['srcSRS'] = 'EPSG:{}'.format(self.epsg)
-        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserverRGB['epsg'])
+        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserver_epsg)
         warp = True
         print(
-            f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserverRGB["epsg"]}')
+            f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')
 
     if (warp):
-        tmpWarp = TEMP_FOLDER + "\\" + file
+        tmpWarp = TEMP_FOLDER + "\\geoserverWarp.tif"
         file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
     if (params.geoserverRGB['outlines']['enabled']):
@@ -73,7 +73,3 @@ def exportGeoserverRGB(self, file_ds, file):
         addOverviews(file_ds)
 
     file_ds = None
-
-    # Delete tmp files
-    if warp:
-        del tmpWarp

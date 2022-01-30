@@ -142,7 +142,7 @@ def getLightVersion(file_ds):
     print('-> Generating lightweight version')
 
     # tmp file
-    tmpGeotiffCompressed = '{}\\compress.tif'.format(TEMP_FOLDER)
+    tmpGeotiffCompressed = '{}\\compressedLowRes.tif'.format(TEMP_FOLDER)
 
     geotiff = gdal.Warp(
         tmpGeotiffCompressed,
@@ -153,8 +153,5 @@ def getLightVersion(file_ds):
             'yRes': 0.3
         }
     )
-
-    # clean the temp file
-    del tmpGeotiffCompressed
 
     return geotiff

@@ -3,15 +3,14 @@ import os
 import shutil
 from pathlib import Path
 import math
-from export_formats.storageRGB import exportStorageRGB
 
 import params as params
 import helpers as h
 
+from export_formats.storageRGB import exportStorageRGB
 from export_formats.storageDEM import exportStorageDEM
 from export_formats.geoserverDEM import exportGeoserverDEM
 from export_formats.geoserverRGB import exportGeoserverRGB
-from export_formats.gdalinfo import exportGdalinfo
 from export_formats.previews import exportStoragePreview
 from export_formats.quantities import exportQuantities
 
@@ -21,8 +20,6 @@ try:
     from osgeo import gdal, osr, ogr
 except:
     sys.exit('ERROR: osgeo module was not found')
-
-TEMP_FOLDER = params.tmp_folder
 
 class ConvertGeotiff:
     '''
@@ -47,15 +44,17 @@ class ConvertGeotiff:
         gdal.UseExceptions()
 
         gdal.SetConfigOption('GDAL_TIFF_INTERNAL_MASK', 'YES')
-        self.isDEM = False
+
         self.checkDirectories()
         self.processTifs()
+        self.clenTempFolder()
 
         print('OPERATION FINISHED')
 
+
     def checkDirectories(self):
         '''
-        Create folders and remove older files
+        Create output folders and remove older files
         '''
 
         if params.clean_output_folder:
@@ -65,6 +64,8 @@ class ConvertGeotiff:
         
         print('-> Creating folders')
 
+        h.createFolder(params.tmp_folder)
+
         h.createFolder(params.output_folder_database)
 
         h.createFolder(params.output_folder_storage)
@@ -73,6 +74,7 @@ class ConvertGeotiff:
         h.createFolder(params.geoserverRGB['output_folder'])
         h.createFolder(params.geoserverDEM['output_folder'])
         h.createFolder(params.geoserverDEMRGB['output_folder'])
+
 
     def processTifs(self):
 
@@ -84,6 +86,8 @@ class ConvertGeotiff:
                 if (file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")):
                     try:
                         
+                        print(f'--> PROCESSING FILE {file} <--')
+
                         file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
                         # Number of bands
                         bands = file_ds.RasterCount
@@ -160,7 +164,7 @@ class ConvertGeotiff:
                         file_ds = None
                         
                     except RuntimeError as e:
-                        print(f'ERROR: Unable to open {filepath}')
+                        print(f'ERROR: Unable to process {filepath}')
                         print(e)
                         sys.exit(1)
             
@@ -172,34 +176,26 @@ class ConvertGeotiff:
         
         print('EXPORTING STORAGE FILES')
         
-        geotiff = None
-        self.compressedGeotiff = h.getLightVersion(file_ds)    
+        # creates and low res for some fast operations
+        compressedGeotiff = h.getLightVersion(file_ds)    
 
         if (self.isDEM):
             if params.storageDEM['enabled']:   
-                self.colorValues = h.calculateDEMColorValues(self, self.compressedGeotiff)
+                self.colorValues = h.calculateDEMColorValues(self, compressedGeotiff)
                 
-                geotiff = exportStorageDEM(self, file_ds)
+                exportStorageDEM(self, file_ds)
 
                 if params.storageDEM['quantities']:
                     exportQuantities(self)
 
         else:
             if params.storageRGB['enabled']:   
-                geotiff = exportStorageRGB(self, file_ds)
-
-        # if not storage export is enabled, return None
-        if not geotiff:
-            return None
-
-        if ((params.gdalinfo['enabled'])):
-            exportGdalinfo(self, geotiff)
+                exportStorageRGB(self, file_ds)
 
         if (params.previews['enabled']):
-            exportStoragePreview(self, self.compressedGeotiff)
-
-        return geotiff
-
+            exportStoragePreview(self, compressedGeotiff)
+        
+        compressedGeotiff = None
 
     def exportGeoserverFiles(self, file_ds, file):
 
@@ -212,6 +208,10 @@ class ConvertGeotiff:
             if (params.geoserverRGB['enabled']):
                 exportGeoserverRGB(self, file_ds, file)
 
-  
+    
+    def clenTempFolder(self): 
+        if os.path.exists(params.tmp_folder):
+            print('-> Removing temp folder')
+            shutil.rmtree(params.tmp_folder)
 
 ConvertGeotiff()

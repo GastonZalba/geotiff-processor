@@ -13,10 +13,10 @@ def exportOutline(self, file_ds):
     # Final vector file
     gdaloutput = f'{params.output_folder_database}/{self.outputFilename}.geojson'
     print(f'-> Exporting outline {gdaloutput}')
-    
+
     geoDriver = ogr.GetDriverByName("GeoJSON")
     srs = osr.SpatialReference()
-    res = srs.ImportFromEPSG(params.geoserverRGB['epsg'])
+    res = srs.ImportFromEPSG(params.geoserver_epsg)
 
     if res != 0:
         raise RuntimeError(repr(res) + ': EPSG not found')
@@ -59,7 +59,7 @@ def exportOutline(self, file_ds):
         area = geom.GetArea()
 
         # Only keep bigger polygons
-        if area > params.outlines['minimum_area']:
+        if area > params.geoserverRGB['outlines']['minimum_area']:
             print('--> Polygon area in m2:', area)
             # Clone to prevent multiiple GDAL bugs
             biggerGeoms.append(geom.Clone())
@@ -74,7 +74,7 @@ def exportOutline(self, file_ds):
         mergedGeom.AddGeometryDirectly(geom)
 
     # Use this to fix some geometry errors
-    mergedGeom = mergedGeom.Buffer(params.outlines['buffer'])
+    mergedGeom = mergedGeom.Buffer(params.geoserverRGB['outlines']['buffer'])
 
     # https://gdal.org/python/osgeo.ogr.Geometry-class.html#MakeValid
     mergedGeom = mergedGeom.MakeValid()
@@ -123,9 +123,6 @@ def exportOutline(self, file_ds):
 
     outDatasource = None
 
-    # Delete temp files
-    del tmpGdaloutput
-
 
 def simplificarGeometria(geom):
-    return geom.Simplify(params.outlines['simplify'])
+    return geom.Simplify(params.geoserverRGB['outlines']['simplify'])

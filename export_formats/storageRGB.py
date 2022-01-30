@@ -1,6 +1,8 @@
 from osgeo import gdal
+
 from helpers import addOverviews
 import params as params
+from export_formats.gdalinfo import exportGdalinfo
 
 TEMP_FOLDER = params.tmp_folder
 
@@ -61,5 +63,8 @@ def exportStorageRGB(self, file_ds):
 
     if params.storageRGB['overviews']:
         addOverviews(geotiff)
+
+    if params.storageRGB['gdalinfo']:
+        exportGdalinfo(self, geotiff)
 
     return geotiff
