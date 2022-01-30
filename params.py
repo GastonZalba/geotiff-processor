@@ -62,7 +62,7 @@ geoserverDEMRGB = {
     'enabled': True,
     'output_folder': output_folder_geoserver + '/mde_rgb',
     'overviews': True,
-    'encoding': 'mapbox' # mapbox | terrarium
+    'encoding': 'terrarium' # mapbox | terrarium
 }
 
 storageRGB = {
