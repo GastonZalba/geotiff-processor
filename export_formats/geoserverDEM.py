@@ -120,11 +120,10 @@ def _exportRGB(self, tmpFile, outputFilename):
 
     meta = src.meta
     meta['dtype'] = rasterio.uint8
-    meta['nodata'] = 0 
+    meta['nodata'] = None
     meta['count'] = 3
     meta['driver'] = 'GTiff'
-    meta['compress'] = 'JPEG'
-    meta['JPEG_QUALITY'] = 100
+    meta['compress'] = 'deflate'
 
     with rasterio.open(gdaloutputDEMRGB, 'w', **meta) as dst:
         dst.write_band(1, r.astype(rasterio.uint8))
