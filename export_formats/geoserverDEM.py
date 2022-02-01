@@ -106,6 +106,9 @@ def _exportRGB(self, tmpFile, outputFilename):
     g = np.zeros(shape)
     b = np.zeros(shape)
 
+    # convert nan values no noData
+    dem = np.nan_to_num(dem, nan=params.no_data)
+    
     if params.geoserverDEMRGB['encoding'] == 'mapbox':
 
         r += np.floor_divide((100000 + dem * 10), 65536)

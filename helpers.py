@@ -97,8 +97,8 @@ def calculateDEMColorValues(self, geotiff):
             array = np.ma.masked_equal(array, self.noDataValue, False)
             array = array.compressed()
 
-    # remove nan values
-    array = np.nan_to_num(array)
+    # convert nan values no noData
+    array = np.nan_to_num(array, nan=params.no_data)
 
     # similar to "Cumulative cut count" (Qgis)
     trimmedMin = np.percentile(
