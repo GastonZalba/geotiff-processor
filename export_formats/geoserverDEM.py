@@ -18,8 +18,8 @@ def exportGeoserverDEM(self, file_ds, file):
     kwargs = {
         'format': 'GTiff',
         'multithread': True,
-        'xRes': 0.1,
-        'yRes': 0.1,
+        'xRes': 0.3,
+        'yRes': 0.3,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
     }
