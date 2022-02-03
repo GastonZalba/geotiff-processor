@@ -42,6 +42,8 @@ def exportStorageDEM(self, file_ds):
 
     kwargs = {
         'format': 'GTiff',
+        'xRes': params.storageDEM['gsd']/100,
+        'yRes': params.storageDEM['gsd']/100,
         'bandList': [1],
         'creationOptions': [
             'BIGTIFF=YES',  # for files larger than 4 GB
