@@ -148,6 +148,7 @@ def getLightVersion(file_ds):
         tmpGeotiffCompressed,
         file_ds,
         **{
+            'multithread': True,
             'format': 'GTiff',
             'xRes': 0.3,
             'yRes': 0.3
