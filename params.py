@@ -74,7 +74,7 @@ storageRGB = {
 
 storageDEM = {
     'enabled': True,
-    'gsd': 20,  # cm
+    'gsd': None,  # cm
     'overviews': True,
     'quantities': True,
     'gdalinfo': True
