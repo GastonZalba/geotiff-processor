@@ -155,3 +155,23 @@ def getLightVersion(file_ds):
     )
 
     return geotiff
+
+
+def checkFileProcessed(self, filenameHasMapId, isMDE, processed, file):
+    '''
+    Check if the file has already been processed before to reuse hash,
+    instead of generating a new one (process rgb and dem at the same time).
+    '''
+
+    if not filenameHasMapId:
+        exist = False
+        f = file.split(params.dem_suffix)[
+            0] if isMDE else removeExtension(file)
+        for i in processed:  # dictionary elements
+            if(f in i):  
+                exist = True
+                self.mapId = processed.get(f)  # take existing hash
+                break
+        if not exist:
+            # if it was never processed, I add it to the dict
+            processed[f] = self.mapId
