@@ -7,6 +7,9 @@ output_folder = 'output'
 
 output_folder_storage = f'{output_folder}/storage'
 output_folder_database = f'{output_folder}/database'
+output_folder_database_jsondata = f'{output_folder_database}/jsondata'
+output_folder_database_mdevalues = f'{output_folder_database}/mdevalues'
+output_folder_database_outlines = f'{output_folder_database}/outlines'
 output_folder_geoserver = f'{output_folder}/geoserver'
 
 filename_prefix = '_MapId-'

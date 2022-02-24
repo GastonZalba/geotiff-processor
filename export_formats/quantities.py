@@ -3,7 +3,7 @@ import params as params
 def exportQuantities(self):
     
     quantitiesPath = '{}\\{}.txt'.format(
-        params.output_folder_database, self.outputFilename)
+        params.output_folder_database_mdevalues, self.outputFilename)
 
     print(f'-> Exporting quantities {quantitiesPath}')
 

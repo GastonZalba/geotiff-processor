@@ -11,7 +11,7 @@ def exportOutline(self, file_ds):
     '''
     
     # Final vector file
-    gdaloutput = f'{params.output_folder_database}/{self.outputFilename}.geojson'
+    gdaloutput = f'{params.output_folder_database_outlines}/{self.outputFilename}.geojson'
     print(f'-> Exporting outline {gdaloutput}')
 
     geoDriver = ogr.GetDriverByName("GeoJSON")

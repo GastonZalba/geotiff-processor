@@ -68,6 +68,12 @@ class ConvertGeotiff:
 
         h.createFolder(params.output_folder_database)
 
+        h.createFolder(params.output_folder_database_jsondata)
+
+        h.createFolder(params.output_folder_database_mdevalues)
+    
+        h.createFolder(params.output_folder_database_outlines)
+
         h.createFolder(params.output_folder_storage)
 
         # geoserver folders

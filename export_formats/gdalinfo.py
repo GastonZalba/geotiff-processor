@@ -8,7 +8,7 @@ def exportGdalinfo(self, ds):
     Export a JSON file with the gdalinfo data
     '''
 
-    gdaloutput = f'{params.output_folder_database}/{self.outputFilename}{params.gdalinfo_suffix}.json'
+    gdaloutput = f'{params.output_folder_database_jsondata}/{self.outputFilename}{params.gdalinfo_suffix}.json'
 
     print(f'-> Exporting gdalinfo data {gdaloutput}')
 
