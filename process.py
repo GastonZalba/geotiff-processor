@@ -6,6 +6,7 @@ import math
 
 import params as params
 import helpers as h
+import generateVRT as vrt
 
 from export_formats.storageRGB import exportStorageRGB
 from export_formats.storageDEM import exportStorageDEM
@@ -89,8 +90,8 @@ class ConvertGeotiff:
         for subdir, dirs, files in os.walk(params.input_folder):
             for file in files:
                 filepath = subdir + os.sep + file
-
-                if (file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")):
+                is_subdir = subdir != params.input_folder
+                if ((file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")) and (not is_subdir)):
                     try:
 
                         print(f'--> PROCESSING FILE {file} <--')
@@ -228,5 +229,6 @@ class ConvertGeotiff:
             print('-> Removing temp folder')
             shutil.rmtree(params.tmp_folder)
 
-
+if(os.listdir(params.input_folder)):
+    vrt.generateVRT()
 ConvertGeotiff()
