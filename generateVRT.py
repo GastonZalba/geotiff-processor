@@ -2,29 +2,28 @@ import os
 from osgeo import gdal
 import params as params
 
-tmp_folder = params.tmp_folder
 
+def generateVRT():
 
-pathList = []
-root_path = params.input_folder
-cont = os.listdir(root_path)
-for i in cont:
-    finalpath = root_path + os.sep + i
-    for path, dirs, files in os.walk(finalpath):
-        filepath = params.tmp_folder + '\\list.txt'
-        with open(filepath, "w") as l:
-            for file in files:
-                if(file.endswith(".tif")):
-                    ok = path + os.sep + file
-                    l.write(ok + '\n')
+    pathList = []
+    root_path = params.input_folder
+    cont = os.listdir(root_path)
+    for i in cont:
+        finalpath = root_path + os.sep + i
+        for path, dirs, files in os.walk(finalpath):
+            filepath = params.tmp_folder + 'list.txt'
+            with open(filepath, "w") as l:
+                for file in files:
+                    if(file.endswith(".tif")):
+                        ok = path + os.sep + file
+                        l.write(ok + '\n')
 
-        with open(filepath, 'r') as f:
-            for line in f:
-                pathList.append(line.split('\n')[0])
+            with open(filepath, 'r') as f:
+                for line in f:
+                    pathList.append(line.split('\n')[0])
 
-        output = root_path + os.sep + i + '.vrt'
+            output = root_path + os.sep + i + '.vrt'
+            ds = gdal.BuildVRT(output, pathList)
+            ds = None  # ds.FlushCache()
 
-        ds = gdal.BuildVRT(output, pathList)
-        ds = None  # ds.FlushCache()
-
-        pathList.clear()
+            pathList.clear()
