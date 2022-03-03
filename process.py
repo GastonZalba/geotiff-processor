@@ -1,3 +1,4 @@
+from operator import is_
 import sys
 import os
 import shutil
@@ -72,7 +73,7 @@ class ConvertGeotiff:
         h.createFolder(params.output_folder_database_jsondata)
 
         h.createFolder(params.output_folder_database_mdevalues)
-    
+
         h.createFolder(params.output_folder_database_outlines)
 
         h.createFolder(params.output_folder_storage)
@@ -84,105 +85,109 @@ class ConvertGeotiff:
 
     def processTifs(self):
 
+        if(os.listdir(params.input_folder)):
+            vrt.generateVRT()
+
         processed = {}
 
         # Find files in the input folder
         for subdir, dirs, files in os.walk(params.input_folder):
-            for file in files:
-                filepath = subdir + os.sep + file
-                is_subdir = subdir != params.input_folder
-                if ((file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")) and (not is_subdir)):
-                    try:
+            is_subdir = subdir != params.input_folder
+            if(not is_subdir):
+                for file in files:
+                    filepath = subdir + os.sep + file
+                    if (file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")):
+                        try:
 
-                        print(f'--> PROCESSING FILE {file} <--')
+                            print(f'--> PROCESSING FILE {file} <--')
 
-                        file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
-                        # Number of bands
-                        bands = file_ds.RasterCount
-                        self.isDEM = bands <= 2
+                            file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
+                            # Number of bands
+                            bands = file_ds.RasterCount
+                            self.isDEM = bands <= 2
 
-                        lastBand = file_ds.GetRasterBand(bands)
-                        self.hasAlphaChannel = (
-                            lastBand.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
-                        self.noDataValue = lastBand.GetNoDataValue()  # take any band
+                            lastBand = file_ds.GetRasterBand(bands)
+                            self.hasAlphaChannel = (
+                                lastBand.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
+                            self.noDataValue = lastBand.GetNoDataValue()  # take any band
 
-                        # Pix4DMatic injects an erroneous 'nan' value as noData attribute
-                        if ((self.noDataValue != None) and (math.isnan(self.noDataValue))):
-                            self.noDataValue = 0
+                            # Pix4DMatic injects an erroneous 'nan' value as noData attribute
+                            if ((self.noDataValue != None) and (math.isnan(self.noDataValue))):
+                                self.noDataValue = 0
 
-                        filenameHasMapId = params.filename_prefix in file
+                            filenameHasMapId = params.filename_prefix in file
 
-                        if (self.isDEM):
+                            if (self.isDEM):
 
-                            print(f'-> File {file} is DEM type')
+                                print(f'-> File {file} is DEM type')
 
-                            # Generating output filename for DME case
-                            self.mapId = h.removeExtension(file.split(
-                                params.filename_prefix)[1].split(params.dem_suffix)[0]) if filenameHasMapId else h.createMapId()
+                                # Generating output filename for DME case
+                                self.mapId = h.removeExtension(file.split(
+                                    params.filename_prefix)[1].split(params.dem_suffix)[0]) if filenameHasMapId else h.createMapId()
 
-                            h.checkFileProcessed(
-                                self, filenameHasMapId, True, processed, file)
+                                h.checkFileProcessed(
+                                    self, filenameHasMapId, True, processed, file)
 
-                            self.registroid = file.split(
-                                params.filename_prefix)[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file.split(params.dem_suffix)[0]))
-                        else:
+                                self.registroid = file.split(
+                                    params.filename_prefix)[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file.split(params.dem_suffix)[0]))
+                            else:
 
-                            print(f'-> File {file} is RGB type')
+                                print(f'-> File {file} is RGB type')
 
-                            self.mapId = h.removeExtension(
-                                file.split(params.filename_prefix)[1]) if filenameHasMapId else h.createMapId()
+                                self.mapId = h.removeExtension(
+                                    file.split(params.filename_prefix)[1]) if filenameHasMapId else h.createMapId()
 
-                            h.checkFileProcessed(
-                                self, filenameHasMapId, False, processed, file)
+                                h.checkFileProcessed(
+                                    self, filenameHasMapId, False, processed, file)
 
-                            self.registroid = file.split(
-                                "_")[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file))
+                                self.registroid = file.split(
+                                    "_")[0] if filenameHasMapId else h.cleanFilename(h.removeExtension(file))
 
-                        output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
+                            output = f'{self.registroid}{params.filename_prefix}{self.mapId}'
 
-                        # Create parent folder for mapId
-                        self.outputFolder = f'{params.output_folder_storage}/{output}'
-                        h.createFolder(self.outputFolder)
+                            # Create parent folder for mapId
+                            self.outputFolder = f'{params.output_folder_storage}/{output}'
+                            h.createFolder(self.outputFolder)
 
-                        self.outputFilename = output if not self.isDEM else '{}{}'.format(
-                            output, params.dem_suffix)
+                            self.outputFilename = output if not self.isDEM else '{}{}'.format(
+                                output, params.dem_suffix)
 
-                        print(
-                            f'-> Files for {self.outputFilename} will be exported')
+                            print(
+                                f'-> Files for {self.outputFilename} will be exported')
 
-                        # File GSD
-                        gt = file_ds.GetGeoTransform()
-                        self.pixelSizeX = gt[1]
-                        self.pixelSizeY = -gt[5]
+                         # File GSD
+                            gt = file_ds.GetGeoTransform()
+                            self.pixelSizeX = gt[1]
+                            self.pixelSizeY = -gt[5]
 
-                        # file's GSD: get average x and y values
-                        self.originalGsd = round(
-                            (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
+                            # file's GSD: get average x and y values
+                            self.originalGsd = round(
+                                (self.pixelSizeY + self.pixelSizeX) / 2 * 100, 2)  # cm
 
-                        # File Projection
-                        self.epsg = h.getEPSGCode(file_ds)
+                            # File Projection
+                            self.epsg = h.getEPSGCode(file_ds)
 
-                        self.date = h.getDateFromMetadata(file_ds)
+                            self.date = h.getDateFromMetadata(file_ds)
 
-                        self.extra_metadata = params.metadata
+                            self.extra_metadata = params.metadata
 
-                        self.extra_metadata.append(
-                            'registroId={}'.format(self.registroid))
+                            self.extra_metadata.append(
+                                'registroId={}'.format(self.registroid))
 
-                        self.extra_metadata.append(
-                            'mapId={}'.format(self.mapId))
+                            self.extra_metadata.append(
+                                'mapId={}'.format(self.mapId))
 
-                        self.exportStorageFiles(file_ds)
+                            self.exportStorageFiles(file_ds)
 
-                        self.exportGeoserverFiles(file_ds, file)
+                            self.exportGeoserverFiles(file_ds, file)
 
-                        # Once we're done, close properly the dataset
-                        file_ds = None
+                            # Once we're done, close properly the dataset
+                            file_ds = None
 
-                    except RuntimeError as e:
-                        print(f'ERROR: Unable to process {filepath}')
-                        print(e)
-                        sys.exit(1)
+                        except RuntimeError as e:
+                            print(f'ERROR: Unable to process {filepath}')
+                            print(e)
+                            sys.exit(1)
 
     def exportStorageFiles(self, file_ds):
         '''
@@ -229,6 +234,5 @@ class ConvertGeotiff:
             print('-> Removing temp folder')
             shutil.rmtree(params.tmp_folder)
 
-if(os.listdir(params.input_folder)):
-    vrt.generateVRT()
+
 ConvertGeotiff()
