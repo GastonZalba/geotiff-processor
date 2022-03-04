@@ -6,13 +6,14 @@ from export_formats.gdalinfo import exportGdalinfo
 
 TEMP_FOLDER = params.tmp_folder
 
+
 def exportStorageRGB(self, file_ds):
 
-    outputFilename = '{}.tif'.format(self.outputFilename)
+    outputFilename = f'{self.outputFilename}.tif'
 
     gdaloutput = self.outputFolder
 
-    gdaloutput = '{}/{}'.format(gdaloutput, outputFilename)
+    gdaloutput = f'{gdaloutput}/{outputFilename}'
 
     print(f'-> Exporting {gdaloutput}')
 

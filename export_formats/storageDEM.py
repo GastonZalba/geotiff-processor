@@ -6,18 +6,19 @@ from export_formats.gdalinfo import exportGdalinfo
 
 TEMP_FOLDER = params.tmp_folder
 
+
 def exportStorageDEM(self, file_ds):
 
-    outputFilename = '{}.tif'.format(self.outputFilename)
+    outputFilename = f'{self.outputFilename}.tif'
 
     gdaloutput = self.outputFolder
 
-    gdaloutput = '{}/{}'.format(gdaloutput, outputFilename)
+    gdaloutput = f'{gdaloutput}/{outputFilename}'
 
     print(f'-> Exporting {gdaloutput}')
 
     tmpWarp = None
-    
+
     warp = False
 
     kwargs = {
@@ -58,10 +59,10 @@ def exportStorageDEM(self, file_ds):
     }
 
     geotiff = gdal.Translate(gdaloutput, file_ds, **kwargs)
-    
+
     if params.storageDEM['overviews']:
         addOverviews(geotiff)
-    
+
     if params.storageDEM['gdalinfo']:
         exportGdalinfo(self, geotiff)
 

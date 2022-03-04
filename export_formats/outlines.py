@@ -4,12 +4,13 @@ import params as params
 
 TEMP_FOLDER = params.tmp_folder
 
+
 def exportOutline(self, file_ds):
     '''
     Export a vector file with the raster's outline. This file
     must be uploaded to the wms layer in the geoserver
     '''
-    
+
     # Final vector file
     gdaloutput = f'{params.output_folder_database_outlines}/{self.outputFilename}.geojson'
     print(f'-> Exporting outline {gdaloutput}')
@@ -113,8 +114,7 @@ def exportOutline(self, file_ds):
             feature.SetField('registro_id', self.registroid)
 
             if self.date:
-                dateFormated = '{}-{}-{}'.format(self.date.strftime(
-                    "%Y"), self.date.strftime("%m"), self.date.strftime("%d"))
+                dateFormated = f'{self.date.strftime("%Y")}-{self.date.strftime("%m")}-{self.date.strftime("%d")}'
                 feature.SetField("date", dateFormated)
 
             layer.CreateFeature(feature)
