@@ -23,7 +23,6 @@ def generateVRT():
                     pathList.append(line.split('\n')[0])
 
             output = root_path + os.sep + i + '.vrt'
-            ds = gdal.BuildVRT(output, pathList)
-            ds = None  # ds.FlushCache()
+            gdal.BuildVRT(output, pathList)
 
             pathList.clear()
