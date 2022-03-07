@@ -42,7 +42,7 @@ El script crea los siguientes archivos optimizados:
 
 - Separar por carpetas el agrupamiento de imágenes deseado.
 - Colocar las carpetas generadas en la carpeta `input`, respetando el nombre de cada una de ellas de acuerdo el número de registro.
-- En caso de haber una carpeta correspondiente a un ortomosaico MDE, aclararlo durante el nombramiento de dicha carpeta. Por ejemplo, si el número de registro de la versión MDE es '123456', establecer como nombre de carpeta '123456_mde'.
+- En caso de haber una carpeta correspondiente a un ortomosaico MDE, aclararlo durante el nombramiento de dicha carpeta. Por ejemplo, si el número de registro de la versión MDE es `123456`, establecer como nombre de carpeta `123456_mde`.
 
 ## TODO
 
