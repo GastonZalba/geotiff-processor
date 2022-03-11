@@ -1,6 +1,7 @@
 import tempfile
 
 tmp_folder = f'{tempfile.gettempdir()}/geotiff-processor'
+extensions = ['.tif', '.tiff', '.vrt']
 
 input_folder = 'input'
 output_folder = 'output'
@@ -77,7 +78,7 @@ storageRGB = {
 
 storageDEM = {
     'enabled': True,
-    'gsd': None,  # cm
+    'gsd': 20,  # cm
     'overviews': True,
     'quantities': True,
     'gdalinfo': True

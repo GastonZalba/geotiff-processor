@@ -97,7 +97,7 @@ class ConvertGeotiff:
 
             for file in files:
                 filepath = subdir + os.sep + file
-                if (file.endswith(".tif") | file.endswith(".tiff") | file.endswith(".vrt")):
+                if (h.getExtension(file) in params.extensions):
                     try:
 
                         print(f'--> PROCESSING FILE {file} <--')

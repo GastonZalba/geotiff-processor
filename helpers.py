@@ -22,6 +22,9 @@ def createFolder(folderPath):
 def removeExtension(filename):
     return os.path.splitext(filename)[0]
 
+def getExtension(filename):
+    return os.path.splitext(filename)[1]
+
 
 def getDateFromMetadata(file_ds):
     '''
