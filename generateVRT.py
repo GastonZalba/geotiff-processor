@@ -11,7 +11,7 @@ def generateVRT():
     for i in cont:
         finalpath = root_path + os.sep + i
         for path, dirs, files in os.walk(finalpath):
-            filepath = params.tmp_folder + 'list.txt'
+            filepath = params.tmp_folder + '\list.txt'
             with open(filepath, "w") as l:
                 for file in files:
                     if(file.endswith(".tif")):
