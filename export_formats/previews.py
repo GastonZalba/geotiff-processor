@@ -5,8 +5,6 @@ from osgeo_utils.gdal_calc import Calc
 
 import params as params
 
-TEMP_FOLDER = params.tmp_folder
-
 
 def exportStoragePreview(self, geotiff):
 
@@ -48,13 +46,12 @@ def getColoredHillshade(self, geotiff):
     '''
     Create a colored hillshade result from merging hillshade / DEM
     '''
-    tmpColorRelief = '{}\\colorRelief.tif'.format(TEMP_FOLDER)
-    tmpHillshade = '{}\\hillshade.tif'.format(TEMP_FOLDER)
-    tmpGammaHillshade = '{}\\gammaHillshade.tif'.format(TEMP_FOLDER)
-    tmpColoredHillshade = '{}\\coloredHillshade.tif'.format(TEMP_FOLDER)
-    tmpColoredHillshadeContrast = '{}\\coloredHillshadeC.tif'.format(
-        TEMP_FOLDER)
-    tmpFileColorPath = '{}\\colorPalette.txt'.format(TEMP_FOLDER)
+    tmpColorRelief = f'{params.tmp_folder}\\colorRelief.tif'
+    tmpHillshade = f'{params.tmp_folder}\\hillshade.tif'
+    tmpGammaHillshade = f'{params.tmp_folder}\\gammaHillshade.tif'
+    tmpColoredHillshade = f'{params.tmp_folder}\\coloredHillshade.tif'
+    tmpColoredHillshadeContrast = f'{params.tmp_folder}\\coloredHillshadeC.tif'
+    tmpFileColorPath = f'{params.tmp_folder}\\colorPalette.txt'
 
     fileColor = open(tmpFileColorPath, 'w')
 

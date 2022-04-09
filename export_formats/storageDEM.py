@@ -6,24 +6,25 @@ from export_formats.gdalinfo import exportGdalinfo
 
 TEMP_FOLDER = params.tmp_folder
 
+
 def exportStorageDEM(self, file_ds):
 
-    outputFilename = '{}.tif'.format(self.outputFilename)
+    outputFilename = f'{self.outputFilename}.tif'
 
     gdaloutput = self.outputFolder
 
-    gdaloutput = '{}/{}'.format(gdaloutput, outputFilename)
+    gdaloutput = f'{gdaloutput}/{outputFilename}'
 
     print(f'-> Exporting {gdaloutput}')
 
     tmpWarp = None
-    
+
     warp = False
 
     kwargs = {
         'format': 'GTiff',
-        'xRes': params.storageDEM['gsd']/100,
-        'yRes': params.storageDEM['gsd']/100,
+        'xRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeX,
+        'yRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeY,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
@@ -42,8 +43,8 @@ def exportStorageDEM(self, file_ds):
 
     kwargs = {
         'format': 'GTiff',
-        'xRes': params.storageDEM['gsd']/100,
-        'yRes': params.storageDEM['gsd']/100,
+        'xRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeX,
+        'yRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeY,
         'bandList': [1],
         'creationOptions': [
             'BIGTIFF=YES',  # for files larger than 4 GB
@@ -58,10 +59,10 @@ def exportStorageDEM(self, file_ds):
     }
 
     geotiff = gdal.Translate(gdaloutput, file_ds, **kwargs)
-    
+
     if params.storageDEM['overviews']:
         addOverviews(geotiff)
-    
+
     if params.storageDEM['gdalinfo']:
         exportGdalinfo(self, geotiff)
 
