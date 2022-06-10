@@ -6,6 +6,7 @@ import params as params
 
 TEMP_FOLDER = params.tmp_folder
 
+
 def exportGeoserverRGB(self, file_ds, file):
 
     tmpWarp = None
@@ -30,8 +31,8 @@ def exportGeoserverRGB(self, file_ds, file):
 
     # if file has diferent epsg, convert
     if (self.epsg != params.geoserver_epsg):
-        kwargs['srcSRS'] = 'EPSG:{}'.format(self.epsg)
-        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserver_epsg)
+        kwargs['srcSRS'] = f'EPSG:{self.epsg}'
+        kwargs['dstSRS'] = f'EPSG:{params.geoserver_epsg}'
         warp = True
         print(
             f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')

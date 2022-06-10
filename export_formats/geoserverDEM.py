@@ -8,6 +8,7 @@ import params as params
 
 TEMP_FOLDER = params.tmp_folder
 
+
 def exportGeoserverDEM(self, file_ds, file):
     ''''
     Exports two geoserver versions:
@@ -27,16 +28,18 @@ def exportGeoserverDEM(self, file_ds, file):
     # change all tiff noData values to the same value
     if (kwargs['srcNodata'] != params.no_data and kwargs['srcNodata'] != 'none'):
         kwargs['dstNodata'] = params.no_data
-        print(f'-> Changing noData value from {self.noDataValue} to {params.no_data}')
+        print(
+            f'-> Changing noData value from {self.noDataValue} to {params.no_data}')
 
     # if file has diferent epsg, convert
     if (self.epsg != params.geoserver_epsg):
-        kwargs['srcSRS'] = 'EPSG:{}'.format(self.epsg)
-        kwargs['dstSRS'] = 'EPSG:{}'.format(params.geoserver_epsg)
-        print(f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')
+        kwargs['srcSRS'] = f'EPSG:{self.epsg}'
+        kwargs['dstSRS'] = f'EPSG:{params.geoserver_epsg}'
+        print(
+            f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')
 
     tmpWarp = TEMP_FOLDER + "\\geoserverWarp.tif"
-    
+
     # Use the warp to convert projections, change the GSD and correct the noData values
     file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
@@ -44,7 +47,7 @@ def exportGeoserverDEM(self, file_ds, file):
 
     if (params.geoserverDEM['enabled']):
         _exportFloat(self, file_ds, outputFilename)
-    
+
     if (params.geoserverDEMRGB['enabled']):
         _exportRGB(self, tmpWarp, outputFilename)
 
@@ -75,15 +78,14 @@ def _exportFloat(self, file_ds, outputFilename):
 
     if (params.geoserverDEM['overviews']):
         h.addOverviews(file_ds)
-    
+
     file_ds = None
 
-    
-def _exportRGB(self, tmpFile, outputFilename):
 
+def _exportRGB(self, tmpFile, outputFilename):
     '''
     Encode grayscale DEM to RGB using:
-    
+
     - Mapbox codification
     elevation = -10000 + ((red * 256 * 256 + green * 256 + blue) * 0.1)
     https://docs.mapbox.com/data/tilesets/guides/access-elevation-data/
@@ -108,7 +110,7 @@ def _exportRGB(self, tmpFile, outputFilename):
 
     # convert nan values no noData
     dem = np.nan_to_num(dem, nan=params.no_data)
-    
+
     if params.geoserverDEMRGB['encoding'] == 'mapbox':
 
         r += np.floor_divide((100000 + dem * 10), 65536)
