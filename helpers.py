@@ -80,16 +80,16 @@ def createMapId():
 
 def calculateDEMColorValues(self, geotiff):
     '''
-    Create a color palette to use as a .txt, considering the elevation values
+    Creates a color palette scale to be exported as a .txt, using the elevation values
     '''
 
     colorValues = []
 
+    print('-> Evaluating DEM values:')
+
     array = np.array(geotiff.GetRasterBand(1).ReadAsArray())
 
     array = np.array(array.flat)
-
-    print('-> Evaluating DEM values:')
 
     # Remove NoDataValue, it doesn't mess up the percentage calculation
     if (params.styleDEM['disregard_values_less_than_0']):

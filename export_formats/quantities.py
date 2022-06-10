@@ -17,7 +17,7 @@ def exportQuantities(self):
         quantities.append(str(round(colorValues[i], 6)))
         i += 1
 
-    string = f'{{{",".join(quantities)}}}'
+    string = f'{",".join(quantities)}'
 
     fileQuantities = open(quantitiesPath, 'w')
     fileQuantities.write(string)

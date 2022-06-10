@@ -8,6 +8,9 @@ TEMP_FOLDER = params.tmp_folder
 
 
 def exportStorageDEM(self, file_ds):
+    '''
+    Exports highest resolution version
+    '''
 
     outputFilename = f'{self.outputFilename}.tif'
 
