@@ -97,7 +97,7 @@ def exportOutline(self, file_ds):
 
             featureDefn.AddFieldDefn(ogr.FieldDefn("gsd", ogr.OFTReal))
             featureDefn.AddFieldDefn(ogr.FieldDefn(
-                "registro_id", ogr.OFTInteger64))
+                "registroid", ogr.OFTInteger64))
             featureDefn.AddFieldDefn(
                 ogr.FieldDefn("map_id", ogr.OFTString))
 
@@ -111,7 +111,7 @@ def exportOutline(self, file_ds):
 
             feature.SetField("gsd", self.originalGsd)
             feature.SetField('map_id', self.mapId)
-            feature.SetField('registro_id', self.registroid)
+            feature.SetField('registroid', self.registroid)
 
             if self.date:
                 dateFormated = f'{self.date.strftime("%Y")}-{self.date.strftime("%m")}-{self.date.strftime("%d")}'
