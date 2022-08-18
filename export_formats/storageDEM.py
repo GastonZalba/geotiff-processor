@@ -50,7 +50,7 @@ def exportStorageDEM(self, file_ds):
         'yRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeY,
         'bandList': [1],
         'creationOptions': [
-            'BIGTIFF=YES',  # for files larger than 4 GB
+            'BIGTIFF=NO',  # If YES, Civil 3d can't open it.
             'TFW=NO',
             'TILED=YES',  # forces the creation of a tiled output GeoTiff with default parameters
             'PHOTOMETRIC=MINISBLACK',

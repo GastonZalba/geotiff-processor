@@ -48,7 +48,7 @@ def exportStorageRGB(self, file_ds):
         'yRes': params.storageRGB['gsd']/100 if params.storageRGB['gsd'] else self.pixelSizeY,
         'creationOptions': [
             'JPEG_QUALITY=80',
-            'BIGTIFF=YES',
+            'BIGTIFF=NO', # If YES, Civil 3d can't open it.
             'TFW=YES',
             'TILED=YES',
             'PHOTOMETRIC=YCBCR',
