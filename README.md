@@ -28,21 +28,16 @@ El script crea los siguientes archivos optimizados:
 
 ## Uso
 
-- Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`.
-- Ponerles como nombre el número de registro audiovisual al que pertenecen (este dato será incorporado como metadata en los archivos procesados). NOTA: en caso de que un registro tenga más de un mapeo, agregarle al final de cada nombre de archivo un guión y el número; `-1`,`-2`, etc.
-- Si se desea procesar un archivo geotiff MDE (Modelo Digital de Elevación), ingresar a continuación del número de registro audiovisual el número de MapId al que pertenece y el sufijo `_mde`, quedando una estructura análoga a `12345678_MapId-123445_mde.tif`.
-- En caso de volver a procesar un mismo ortomosaico, debe ingresar como nombre del archivo, el obtenido del procesamiento original.
+- Colocar los ortomosaicos .tif/.tiff en máxima resolución disponible en la carpeta `input`. Si el ortomosaico a procesar está en formato tiles, crear una carpeta contenedora con todas las imágenes correspondientes.
+- A los ortomosaicos completos (o la carpeta contenedora en el caso de los tiles) ponerles como nombre el número de registro audiovisual al que pertenecen (este dato será incorporado como metadata en los archivos procesados). NOTA: en caso de que un registro tenga más de un mapeo, agregarle al final de cada nombre de archivo un guión y el número; `-1`,`-2`, etc.
+- Si se desea procesar un archivo geotiff MDE (Modelo Digital de Elevación), ingresar a continuación del número de registro audiovisual el sufijo `_mde`, quedando una estructura análoga a `12345678_mde.tif`.
+- En caso de volver a procesar un ortomosaico existente, y querer preservar el mismo MapId, debe ingresar como nombre del archivo el obtenido del procesamiento original (y en caso de ser un mde, agregar el sufijo `_mde` al final), quedando similar a `12345678_MapId-123445_mde.tif`.
 - Ejecutar `python process.py` para iniciar la conversión. Los archivos procesados serán creados en la carpeta `output`.
 
 ## Configuración
 
 - De ser necesario modificar archivo `params.py` según formatos de exportación, metadata y carpetas.
 
-## Combinación de múltiples tiles/mapeos en un solo VRT
-
-- Separar por carpetas el agrupamiento de imágenes deseado.
-- Colocar las carpetas generadas en la carpeta `input`, respetando el nombre de cada una de ellas de acuerdo el número de registro.
-- En caso de haber una carpeta correspondiente a un ortomosaico MDE, aclararlo durante el nombramiento de dicha carpeta. Por ejemplo, si el número de registro de la versión MDE es `123456`, establecer como nombre de carpeta `123456_mde`.
 
 ## TODO
 
