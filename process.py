@@ -200,7 +200,8 @@ class ConvertGeotiff:
         print('EXPORTING STORAGE FILES')
 
         # creates and low res for some fast operations
-        compressedGeotiff = h.getLightVersion(file_ds)
+        if params.storageDEM['enabled'] or params.previews['enabled']:
+            compressedGeotiff = h.getLightVersion(file_ds)
 
         if (self.isDEM):
             if params.storageDEM['enabled']:
