@@ -200,19 +200,19 @@ class ConvertGeotiff:
         print('EXPORTING STORAGE FILES')
 
         # creates and low res for some fast operations
-        if params.storageDEM['enabled'] or params.previews['enabled']:
+        if params.storageDEM['enabled'] or params.previews['enabled'] or params.storageDEM['quantities']:
             compressedGeotiff = h.getLightVersion(file_ds, self.noDataValue)
 
         if (self.isDEM):
-            if params.storageDEM['enabled'] or params.previews['enabled']:
+            if params.storageDEM['enabled'] or params.previews['enabled'] or params.storageDEM['quantities']:
                 self.colorValues = h.calculateDEMColorValues(
                     self, compressedGeotiff)
             
             if params.storageDEM['enabled']:
                 exportStorageDEM(self, file_ds)
 
-                if params.storageDEM['quantities']:
-                    exportQuantities(self)
+            if params.storageDEM['quantities']:
+                exportQuantities(self)
 
         else:
             if params.storageRGB['enabled']:
