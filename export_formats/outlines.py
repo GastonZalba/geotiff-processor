@@ -34,7 +34,12 @@ def exportOutline(self, file_ds):
 
     outLayer = tmpOutDatasource.CreateLayer("outline", srs=srs)
 
-    maskBand = file_ds.GetRasterBand(4)
+    if self.hasAlphaChannel:
+        maskBand = file_ds.GetRasterBand(4)
+    else:
+        #@todo: make mask from noData values
+        print('Unsupported format to create outlines')
+        return
 
     # Create the outline based on the alpha channel
     gdal.Polygonize(maskBand, maskBand, outLayer, -1, [], callback=None)
