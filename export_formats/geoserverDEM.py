@@ -19,8 +19,8 @@ def exportGeoserverDEM(self, file_ds, file):
     kwargs = {
         'format': 'GTiff',
         'multithread': True,
-        'xRes': 0.3,
-        'yRes': 0.3,
+        'xRes': min(0.3, self.pixelSizeX),
+        'yRes': min(0.3, self.pixelSizeY),
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
     }
@@ -109,7 +109,7 @@ def _exportRGB(self, tmpFile, outputFilename):
     b = np.zeros(shape)
 
     # convert nan values no noData
-    dem = np.nan_to_num(dem, nan=params.no_data)
+    dem = np.nan_to_num(dem, nan=params.no_data, copy=False)
 
     if params.geoserverDEMRGB['encoding'] == 'mapbox':
 

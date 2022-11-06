@@ -19,7 +19,7 @@ def exportGeoserverRGB(self, file_ds, file):
         'yRes': params.geoserverRGB['gsd']/100,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
+        'srcNodata': self.noDataValue if not self.hasAlphaChannel and self.isDEM else 'none'
     }
 
     # change all tiff noData values to the same value
@@ -60,12 +60,12 @@ def exportGeoserverRGB(self, file_ds, file):
             'COMPRESS=JPEG',
             # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
         ],
-        'maskBand': 4,
+        'maskBand': 4 if self.hasAlphaChannel else 1,
         'xRes': params.geoserverRGB['gsd']/100,
         'yRes': params.geoserverRGB['gsd']/100,
         'metadataOptions': self.extra_metadata,
         # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'noData': 'none' if self.hasAlphaChannel else params.no_data,
+        'noData': params.no_data if not self.hasAlphaChannel and self.isDEM else 'none'
     }
 
     file_ds = gdal.Translate(gdaloutput, file_ds, **kwargs)

@@ -92,9 +92,9 @@ def calculateDEMColorValues(self, geotiff):
     array = np.array(array.flat)
 
     # convert nan values no noData
-    array = np.nan_to_num(array, nan=params.no_data)
+    array = np.nan_to_num(array, nan=params.no_data, copy=False)
 
-    array = np.ma.masked_equal(array, params.no_data, False)
+    array = np.ma.masked_equal(array, params.no_data, copy=False)
 
     # Remove NoDataValue, it doesn't mess up the percentage calculation
     if (params.styleDEM['disregard_values_less_than_0']):
@@ -102,7 +102,7 @@ def calculateDEMColorValues(self, geotiff):
         array = array.compressed()
     
     if (self.noDataValue != 'none'):
-        array = np.ma.masked_equal(array, self.noDataValue, False)
+        array = np.ma.masked_equal(array, self.noDataValue, copy=False)
         array = array.compressed()
     
     # similar to "Cumulative cut count" (Qgis)
@@ -138,7 +138,7 @@ def calculateDEMColorValues(self, geotiff):
     return colorValues
 
 
-def getLightVersion(file_ds, noDataValue):
+def getLightVersion(self, file_ds, noDataValue):
     '''
     Creates a lightweight version to be used in some fast operations
     like previews, mde stats, etc.
@@ -155,8 +155,8 @@ def getLightVersion(file_ds, noDataValue):
         **{
             'multithread': True,
             'format': 'GTiff',
-            'xRes': 0.3,
-            'yRes': 0.3,
+            'xRes': min(0.3, self.pixelSizeX),
+            'yRes': min(0.3, self.pixelSizeY),
             'dstNodata': noDataValue
         }
     )
