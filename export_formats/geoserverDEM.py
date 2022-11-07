@@ -47,7 +47,9 @@ def exportGeoserverDEM(self, file_ds, file):
 
     if (params.geoserverDEM['enabled']):
         _exportFloat(self, file_ds, outputFilename)
-
+    
+    file_ds = None
+    
     if (params.geoserverDEMRGB['enabled']):
         _exportRGB(self, tmpWarp, outputFilename)
 
