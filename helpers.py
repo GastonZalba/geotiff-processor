@@ -155,8 +155,8 @@ def getLightVersion(self, file_ds, noDataValue):
         **{
             'multithread': True,
             'format': 'GTiff',
-            'xRes': min(0.3, self.pixelSizeX),
-            'yRes': min(0.3, self.pixelSizeY),
+            'xRes': max(0.3, self.pixelSizeX),
+            'yRes': max(0.3, self.pixelSizeY),
             'dstNodata': noDataValue
         }
     )
