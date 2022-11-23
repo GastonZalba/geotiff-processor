@@ -138,7 +138,7 @@ def calculateDEMColorValues(self, geotiff):
     return colorValues
 
 
-def getLightVersion(self, file_ds, noDataValue):
+def getLightVersion(self, file_ds):
     '''
     Creates a lightweight version to be used in some fast operations
     like previews, mde stats, etc.
@@ -157,7 +157,7 @@ def getLightVersion(self, file_ds, noDataValue):
             'format': 'GTiff',
             'xRes': max(0.3, self.pixelSizeX),
             'yRes': max(0.3, self.pixelSizeY),
-            'dstNodata': noDataValue
+            'dstNodata': 'none' if self.hasAlphaChannel else self.noDataValue
         }
     )
 
