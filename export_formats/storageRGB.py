@@ -9,11 +9,11 @@ TEMP_FOLDER = params.tmp_folder
 
 def exportStorageRGB(self, file_ds):
 
-    outputFilename = f'{self.outputFilename}.tif'
+    output_filename = f'{self.outputFilename}.tif'
+    output_filename_sm = f'{self.outputFilename}_sm.tif'
 
-    gdaloutput = self.outputFolder
-
-    gdaloutput = f'{gdaloutput}/{outputFilename}'
+    gdaloutput = f'{self.outputFolder}/{output_filename}'
+    gdaloutput_sm = f'{self.outputFolder}/{output_filename_sm}'
 
     print(f'-> Exporting {gdaloutput}')
 
@@ -60,10 +60,19 @@ def exportStorageRGB(self, file_ds):
         'maskBand': 4
     }
 
+    
+    kwargs_sm = {
+        **kwargs,
+        'xRes': params.storageRGB['gsd_sm'] / 100,
+        'yRes': params.storageRGB['gsd_sm'] / 100,
+    }
+
     geotiff = gdal.Translate(gdaloutput, file_ds, **kwargs)
+    geotiff_sm = gdal.Translate(gdaloutput_sm, file_ds, **kwargs_sm)
 
     if params.storageRGB['overviews']:
         addOverviews(geotiff)
+        addOverviews(geotiff_sm)
 
     if params.storageRGB['gdalinfo']:
         exportGdalinfo(self, geotiff)

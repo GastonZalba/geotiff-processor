@@ -72,6 +72,7 @@ geoserverDEMRGB = {
 storageRGB = {
     'enabled': True,
     'gsd': None,  # None to use original | cm
+    'gsd_sm': 10,  # cm
     'overviews': True,
     'gdalinfo': True
 }
@@ -93,7 +94,7 @@ styleDEM = {
 
     # Remove negative values from dem from the style calculations. Otherwhise, removes only the noData values.
     # This can be used if the dem has some processing errors/holes
-    'disregard_values_less_than_0': False,
+    'disregard_values_less_than_0': True,
 
     # similar to "Cumulative cut count" (Qgis)
     'min_percentile': 0.5,
