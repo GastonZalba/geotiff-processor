@@ -72,7 +72,8 @@ geoserverDEMRGB = {
 storageRGB = {
     'enabled': True,
     'gsd': None,  # None to use original | cm
-    'gsd_sm': 10,  # cm
+    'gsd_sm_trigger': 5,  # cm 
+    'gsd_sm': 10,  # cm Used if the default gsd is less than gsd_limit
     'overviews': True,
     'gdalinfo': True
 }
