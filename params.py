@@ -37,7 +37,7 @@ geoserverRGB = {
     'enabled': True,
     'output_folder': output_folder_geoserver + '/rgb',
     'gsd': 20, # cm
-    'ha_sm_trigger': 100, # If raster is less than these ha, increase the quality of the geoserver images
+    'ha_sm_trigger': 150, # If raster is less than these ha, increase the quality of the geoserver images
     'gsd_sm': 10, # cm
     'overviews': True
 }
