@@ -14,6 +14,7 @@ from export_formats.geoserverDEM import exportGeoserverDEM
 from export_formats.geoserverRGB import exportGeoserverRGB
 from export_formats.previews import exportStoragePreview
 from export_formats.quantities import exportQuantities
+from export_formats.outlines import exportOutline
 
 from version import __version__
 
@@ -104,10 +105,10 @@ class ConvertGeotiff:
 
                         file_ds = gdal.Open(filepath, gdal.GA_ReadOnly)
                         # Number of bands
-                        bands = file_ds.RasterCount
-                        self.isDEM = bands <= 2
+                        bands_count = file_ds.RasterCount
+                        self.isDEM = bands_count <= 2
 
-                        lastBand = file_ds.GetRasterBand(bands)
+                        lastBand = file_ds.GetRasterBand(bands_count)
                         self.hasAlphaChannel = (
                             lastBand.GetColorInterpretation() == 6)  # https://github.com/rasterio/rasterio/issues/100
                         self.noDataValue = lastBand.GetNoDataValue()  # take any band
@@ -162,6 +163,18 @@ class ConvertGeotiff:
                         gt = file_ds.GetGeoTransform()
                         self.pixelSizeX = gt[1]
                         self.pixelSizeY = -gt[5]
+                        self.pixel_area = gt[1] * abs(gt[5])
+                        
+                        if (self.hasAlphaChannel):
+                            pixel_count = lastBand.ReadAsArray()
+                            self.pixel_num = (pixel_count > 0).sum()
+                        else:
+                            # entire geotiff area (including alpha and nodata)
+                            self.pixel_num = file_ds.RasterXSize * file_ds.RasterYSize
+                        
+                        self.area = self.pixel_num * (self.pixel_area / 10000)
+                        
+                        print('-> Area in ha:', self.area)
 
                         # file's GSD: get average x and y values
                         self.originalGsd = round(
@@ -215,6 +228,9 @@ class ConvertGeotiff:
                 exportQuantities(self)
 
         else:
+            if (params.outlines['enabled']):
+                exportOutline(self, compressedGeotiff)
+
             if params.storageRGB['enabled']:
                 exportStorageRGB(self, file_ds)
 
@@ -232,7 +248,7 @@ class ConvertGeotiff:
                 exportGeoserverDEM(self, file_ds, file)
         else:
             if (params.geoserverRGB['enabled']):
-                exportGeoserverRGB(self, file_ds, file)
+                exportGeoserverRGB(self, file_ds)
 
     def clenTempFolder(self):
         if os.path.exists(params.tmp_folder):

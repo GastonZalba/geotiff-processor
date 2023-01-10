@@ -65,7 +65,7 @@ def exportOutline(self, file_ds):
         area = geom.GetArea()
 
         # Only keep bigger polygons
-        if area > params.geoserverRGB['outlines']['minimum_area']:
+        if area > params.outlines['minimum_area']:
             print('--> Polygon area in m2:', area)
             # Clone to prevent multiiple GDAL bugs
             biggerGeoms.append(geom.Clone())
@@ -80,7 +80,7 @@ def exportOutline(self, file_ds):
         mergedGeom.AddGeometryDirectly(geom)
 
     # Use this to fix some geometry errors
-    mergedGeom = mergedGeom.Buffer(params.geoserverRGB['outlines']['buffer'])
+    mergedGeom = mergedGeom.Buffer(params.outlines['buffer'])
 
     # https://gdal.org/python/osgeo.ogr.Geometry-class.html#MakeValid
     mergedGeom = mergedGeom.MakeValid()
@@ -130,4 +130,4 @@ def exportOutline(self, file_ds):
 
 
 def simplificarGeometria(geom):
-    return geom.Simplify(params.geoserverRGB['outlines']['simplify'])
+    return geom.Simplify(params.outlines['simplify'])

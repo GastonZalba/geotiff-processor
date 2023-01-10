@@ -1,13 +1,11 @@
 from osgeo import gdal
 
-from export_formats.outlines import exportOutline
 from helpers import addOverviews
 import params as params
 
 TEMP_FOLDER = params.tmp_folder
 
-
-def exportGeoserverRGB(self, file_ds, file):
+def exportGeoserverRGB(self, file_ds):
 
     tmpWarp = None
 
@@ -15,8 +13,8 @@ def exportGeoserverRGB(self, file_ds, file):
 
     kwargs = {
         'format': 'GTiff',
-        'xRes': params.geoserverRGB['gsd']/100,
-        'yRes': params.geoserverRGB['gsd']/100,
+        'xRes': params.geoserverRGB['gsd']/100 if self.area > params.geoserverRGB['ha_sm_trigger'] else params.geoserverRGB['gsd_sm']/100,
+        'yRes': params.geoserverRGB['gsd']/100 if self.area > params.geoserverRGB['ha_sm_trigger'] else params.geoserverRGB['gsd_sm']/100,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         'srcNodata': self.noDataValue if not self.hasAlphaChannel and self.isDEM else 'none'
@@ -41,8 +39,6 @@ def exportGeoserverRGB(self, file_ds, file):
         tmpWarp = TEMP_FOLDER + "\\geoserverWarp.tif"
         file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
-    if (params.geoserverRGB['outlines']['enabled']):
-        exportOutline(self, file_ds)
 
     outputFilename = f'{self.outputFilename}.tif'
 
@@ -61,8 +57,8 @@ def exportGeoserverRGB(self, file_ds, file):
             # 'PROFILE=GeoTIFF' # Only GeoTIFF tags will be added to the baseline
         ],
         'maskBand': 4 if self.hasAlphaChannel else 1,
-        'xRes': params.geoserverRGB['gsd']/100,
-        'yRes': params.geoserverRGB['gsd']/100,
+        'xRes': params.geoserverRGB['gsd']/100 if self.area > params.geoserverRGB['ha_sm_trigger'] else params.geoserverRGB['gsd_sm']/100,
+        'yRes': params.geoserverRGB['gsd']/100 if self.area > params.geoserverRGB['ha_sm_trigger'] else params.geoserverRGB['gsd_sm']/100,
         'metadataOptions': self.extra_metadata,
         # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         'noData': params.no_data if not self.hasAlphaChannel and self.isDEM else 'none'

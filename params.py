@@ -36,23 +36,26 @@ metadata = [
 geoserverRGB = {
     'enabled': True,
     'output_folder': output_folder_geoserver + '/rgb',
-    'gsd': 20,  # cm
-    'overviews': True,
+    'gsd': 20, # cm
+    'ha_sm_trigger': 100, # If raster is less than these ha, increase the quality of the geoserver images
+    'gsd_sm': 10, # cm
+    'overviews': True
+}
 
-    'outlines': {
-        'enabled': True,
+# outlines are exported only in RGB images
+outlines = {
+    'enabled': True,
 
-        # Polygons bigger than this area are preserved in the outlines
-        'minimum_area': 10,  # m2
+    # Polygons bigger than this area are preserved in the outlines
+    'minimum_area': 10,  # m2
 
-        # Use to simplify the geometry
-        # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Simplify
-        'simplify': 1,
+    # Use to simplify the geometry
+    # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Simplify
+    'simplify': 1,
 
-        # Use to fix some geometry errors on the vector
-        # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Buffer
-        'buffer': 0
-    }
+    # Use to fix some geometry errors on the vector
+    # https://gdal.org/python/osgeo.ogr.Geometry-class.html#Buffer
+    'buffer': 0    
 }
 
 geoserverDEM = {
