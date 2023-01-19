@@ -17,7 +17,7 @@ def exportOutline(self, file_ds):
 
     geoDriver = ogr.GetDriverByName("GeoJSON")
     srs = osr.SpatialReference()
-    res = srs.ImportFromEPSG(params.geoserver_epsg)
+    res = srs.ImportFromEPSG(self.epsg)
 
     if res != 0:
         raise RuntimeError(repr(res) + ': EPSG not found')
