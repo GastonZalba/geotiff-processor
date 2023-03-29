@@ -26,8 +26,8 @@ def exportStorageDEM(self, file_ds):
 
     kwargs = {
         'format': 'GTiff',
-        'xRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeX,
-        'yRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeY,
+        'xRes': max(params.storageDEM['gsd']/100, self.pixelSizeX) if params.storageDEM['gsd'] else self.pixelSizeX,
+        'yRes': max(params.storageDEM['gsd']/100, self.pixelSizeY) if params.storageDEM['gsd'] else self.pixelSizeY,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
@@ -46,8 +46,8 @@ def exportStorageDEM(self, file_ds):
 
     kwargs = {
         'format': 'GTiff',
-        'xRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeX,
-        'yRes': params.storageDEM['gsd']/100 if params.storageDEM['gsd'] else self.pixelSizeY,
+        'xRes': max(params.storageDEM['gsd']/100, self.pixelSizeX) if params.storageDEM['gsd'] else self.pixelSizeX,
+        'yRes': max(params.storageDEM['gsd']/100, self.pixelSizeY) if params.storageDEM['gsd'] else self.pixelSizeY,
         'bandList': [1],
         'creationOptions': [
             'BIGTIFF=NO',  # If YES, Civil 3d can't open it.
