@@ -3,6 +3,7 @@ import os
 import shutil
 from pathlib import Path
 import math
+import struct
 
 import params as params
 import helpers as h
@@ -37,7 +38,7 @@ class ConvertGeotiff:
 
     def __init__(self):
         print(f'SCRIPT Version: {__version__}')
-
+        
         version_num = int(gdal.VersionInfo('VERSION_NUM'))
         print(f'GDAL Version: {version_num}')
 
@@ -164,10 +165,20 @@ class ConvertGeotiff:
                         self.pixelSizeX = gt[1]
                         self.pixelSizeY = -gt[5]
                         self.pixel_area = gt[1] * abs(gt[5])
-                        
+                        self.pixel_num = 0
+
                         if (self.hasAlphaChannel):
-                            pixel_count = lastBand.ReadAsArray()
-                            self.pixel_num = (pixel_count > 0).sum()
+                            BandType = gdal.GetDataTypeName(lastBand.DataType)
+                            fmttypes = {'Byte':'B', 'UInt16':'H', 'Int16':'h', 'UInt32':'I', 'Int32':'i', 'Float32':'f', 'Float64':'d'}
+                            for y in range(lastBand.YSize):
+                            
+                                scanline = lastBand.ReadRaster(0, y, lastBand.XSize, 1, lastBand.XSize, 1, lastBand.DataType)
+                                values = struct.unpack(fmttypes[BandType] * lastBand.XSize, scanline)
+                            
+                                for value in values:
+                                    if value > 0:
+                                        self.pixel_num = self.pixel_num + 1
+
                         else:
                             # entire geotiff area (including alpha and nodata)
                             self.pixel_num = file_ds.RasterXSize * file_ds.RasterYSize
