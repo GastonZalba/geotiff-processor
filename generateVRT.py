@@ -23,6 +23,7 @@ def generateVRT():
                     pathList.append(line.split('\n')[0])
 
             output = root_path + os.sep + i + '.vrt'
-            gdal.BuildVRT(output, pathList)
+            vrt_options = gdal.BuildVRTOptions(allowProjectionDifference=True)
+            gdal.BuildVRT(output, pathList, options=vrt_options)
 
             pathList.clear()
