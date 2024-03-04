@@ -21,8 +21,8 @@ def exportStorageRGB(self, file_ds):
 
     kwargs = {
         'format': 'GTiff',
-        'xRes': params.storageRGB['gsd']/100 if params.storageRGB['gsd'] else self.pixelSizeX,
-        'yRes': params.storageRGB['gsd']/100 if params.storageRGB['gsd'] else self.pixelSizeY,
+        'xRes': max(params.storageRGB['gsd']/100, self.pixelSizeX) if params.storageRGB['gsd'] else self.pixelSizeX,
+        'yRes': max(params.storageRGB['gsd']/100, self.pixelSizeY) if params.storageRGB['gsd'] else self.pixelSizeY,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
         'srcNodata': 'none' if self.hasAlphaChannel else self.noDataValue
@@ -42,8 +42,8 @@ def exportStorageRGB(self, file_ds):
     kwargs = {
         'format': 'GTiff',
         'bandList': [1, 2, 3],
-        'xRes': params.storageRGB['gsd']/100 if params.storageRGB['gsd'] else self.pixelSizeX,
-        'yRes': params.storageRGB['gsd']/100 if params.storageRGB['gsd'] else self.pixelSizeY,
+        'xRes': max(params.storageRGB['gsd']/100, self.pixelSizeX) if params.storageRGB['gsd'] else self.pixelSizeX,
+        'yRes': max(params.storageRGB['gsd']/100, self.pixelSizeY) if params.storageRGB['gsd'] else self.pixelSizeY,
         'creationOptions': [
             'JPEG_QUALITY=80',
             'BIGTIFF=NO', # If YES, Civil 3d can't open it.
@@ -73,6 +73,9 @@ def exportStorageRGB(self, file_ds):
 
         kwargs_sm = {
             **kwargs,
+            'creationOptions': [
+                'BIGTIFF=NO' # If YES, Civil 3d can't open it
+            ],
             'xRes': params.storageRGB['gsd_sm'] / 100,
             'yRes': params.storageRGB['gsd_sm'] / 100,
         }
