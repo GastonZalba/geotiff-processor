@@ -63,8 +63,8 @@ def _exportFloat(self, file_ds, outputFilename):
     kwargs = {
         'format': 'GTiff',
         'bandList': [1],
-        'xRes': params.geoserverDEM['gsd']/100,
-        'yRes': params.geoserverDEM['gsd']/100,
+        'xRes': max(params.geoserverDEM['gsd']/100, self.pixelSizeX),
+        'yRes': max(params.geoserverDEM['gsd']/100, self.pixelSizeY),
         'creationOptions': [
             'TFW=NO',
             'TILED=YES',
