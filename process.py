@@ -51,7 +51,7 @@ class ConvertGeotiff:
 
         self.checkDirectories()
         self.processTifs()
-        self.clenTempFolder()
+        self.cleanTempFolder()
 
         print('OPERATION FINISHED')
 
@@ -261,7 +261,7 @@ class ConvertGeotiff:
             if (params.geoserverRGB['enabled']):
                 exportGeoserverRGB(self, file_ds)
 
-    def clenTempFolder(self):
+    def cleanTempFolder(self):
         if os.path.exists(params.tmp_folder):
             print('-> Removing temp folder')
             shutil.rmtree(params.tmp_folder)
