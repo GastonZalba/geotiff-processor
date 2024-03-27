@@ -25,7 +25,6 @@ def exportStorageDEM(self, file_ds):
     warp = False
 
     kwargs = {
-        'format': 'GTiff',
         'xRes': max(params.storageDEM['gsd']/100, self.pixelSizeX) if params.storageDEM['gsd'] else self.pixelSizeX,
         'yRes': max(params.storageDEM['gsd']/100, self.pixelSizeY) if params.storageDEM['gsd'] else self.pixelSizeY,
         'multithread': True,
@@ -41,7 +40,7 @@ def exportStorageDEM(self, file_ds):
             f'-> Changing noData value from {self.noDataValue} to {params.no_data}')
 
     if (warp):
-        tmpWarp = f'{TEMP_FOLDER}\\file_ds'
+        tmpWarp = f'{TEMP_FOLDER}\\warpTmp.vrt'
         file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
     kwargs = {

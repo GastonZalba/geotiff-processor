@@ -20,7 +20,6 @@ def exportStorageRGB(self, file_ds):
     warp = False
 
     kwargs = {
-        'format': 'GTiff',
         'xRes': max(params.storageRGB['gsd']/100, self.pixelSizeX) if params.storageRGB['gsd'] else self.pixelSizeX,
         'yRes': max(params.storageRGB['gsd']/100, self.pixelSizeY) if params.storageRGB['gsd'] else self.pixelSizeY,
         'multithread': True,
@@ -36,7 +35,7 @@ def exportStorageRGB(self, file_ds):
             f'-> Changing noData value from {self.noDataValue} to {params.no_data}')
 
     if (warp):
-        tmpWarp = f'{TEMP_FOLDER}\\file_ds'
+        tmpWarp = f'{TEMP_FOLDER}\\warpTmp.vrt'
         file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
     kwargs = {
@@ -70,6 +69,8 @@ def exportStorageRGB(self, file_ds):
         
         output_filename_sm = f'{self.outputFilename}_sm.tif'
         gdaloutput_sm = f'{self.outputFolder}/{output_filename_sm}'
+        
+        print(f'-> Exporting {gdaloutput_sm}')
 
         kwargs_sm = {
             **kwargs,

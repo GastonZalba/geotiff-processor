@@ -12,12 +12,11 @@ def exportGeoserverRGB(self, file_ds):
     warp = False
 
     kwargs = {
-        'format': 'GTiff',
         'xRes': params.geoserverRGB['gsd']/100 if self.area > params.geoserverRGB['ha_sm_trigger'] else params.geoserverRGB['gsd_sm']/100,
         'yRes': params.geoserverRGB['gsd']/100 if self.area > params.geoserverRGB['ha_sm_trigger'] else params.geoserverRGB['gsd_sm']/100,
         'multithread': True,
         # force 'none' to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'srcNodata': self.noDataValue if not self.hasAlphaChannel and self.isDEM else 'none'
+        'srcNodata': self.noDataValue if not self.hasAlphaChannel else 'none'
     }
 
     # change all tiff noData values to the same value
@@ -36,13 +35,15 @@ def exportGeoserverRGB(self, file_ds):
             f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')
 
     if (warp):
-        tmpWarp = TEMP_FOLDER + "\\geoserverWarp.tif"
+        tmpWarp = TEMP_FOLDER + "\\warpTmp.vrt"
         file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
 
 
     outputFilename = f'{self.outputFilename}.tif'
 
     gdaloutput = f'{params.geoserverRGB["output_folder"]}/{outputFilename}'
+    
+    print(f'-> Exporting {gdaloutput}')
 
     kwargs = {
         'format': 'GTiff',
@@ -61,7 +62,7 @@ def exportGeoserverRGB(self, file_ds):
         'yRes': params.geoserverRGB['gsd']/100 if self.area > params.geoserverRGB['ha_sm_trigger'] else params.geoserverRGB['gsd_sm']/100,
         'metadataOptions': self.extra_metadata,
         # to fix old error in Drone Deploy exports (https://gdal.org/programs/gdal_translate.html#cmdoption-gdal_translate-a_nodata)
-        'noData': params.no_data if not self.hasAlphaChannel and self.isDEM else 'none'
+        'noData': params.no_data if not self.hasAlphaChannel else 'none'
     }
 
     file_ds = gdal.Translate(gdaloutput, file_ds, **kwargs)

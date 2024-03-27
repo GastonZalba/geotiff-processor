@@ -1,5 +1,7 @@
 import os
 from osgeo import gdal, osr, ogr
+import numpy as np
+
 import params as params
 
 TEMP_FOLDER = params.tmp_folder
@@ -37,15 +39,16 @@ def exportOutline(self, file_ds):
     if self.hasAlphaChannel:
         maskBand = file_ds.GetRasterBand(4)
     else:
-        #@todo: make mask from noData values
-        print('Unsupported format to create outlines')
-        return
+        red_band = file_ds.GetRasterBand(1).ReadAsArray()
+        maskBand = np.where(red_band == self.noDataValue, 0, 255).astype(np.uint8)
+        file_ds.GetRasterBand(1).WriteArray(maskBand)
+        maskBand = file_ds.GetRasterBand(1)
 
     # Create the outline based on the alpha channel
     gdal.Polygonize(maskBand, maskBand, outLayer, -1, [], callback=None)
 
     tmpOutDatasource = None
-
+    
     if os.path.exists(gdaloutput):
         geoDriver.DeleteDataSource(gdaloutput)
 

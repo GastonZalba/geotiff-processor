@@ -60,7 +60,7 @@ def cleanFilename(filename):
 
 
 def addOverviews(gdal_dataset):
-    print('-> Adding overviews')
+    print('--> Adding overviews')
     '''
     Overviews are duplicate versions of your original data, but resampled to a lower resolution
     By default, overviews take the same compression type and transparency masks of the input dataset.
@@ -147,14 +147,13 @@ def getLightVersion(self, file_ds):
     print('-> Generating lightweight version')
 
     # tmp file
-    tmpGeotiffCompressed = f'{params.tmp_folder}\\compressedLowRes.tif'
+    tmpGeotiffCompressed = f'{params.tmp_folder}\\compressedLowRes.vrt'
 
     geotiff = gdal.Warp(
         tmpGeotiffCompressed,
         file_ds,
         **{
             'multithread': True,
-            'format': 'GTiff',
             'xRes': max(0.3, self.pixelSizeX),
             'yRes': max(0.3, self.pixelSizeY),
             'dstNodata': 'none' if self.hasAlphaChannel else self.noDataValue

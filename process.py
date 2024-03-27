@@ -20,7 +20,7 @@ from export_formats.outlines import exportOutline
 from version import __version__
 
 try:
-    from osgeo import gdal, osr, ogr
+    from osgeo import gdal
 except:
     sys.exit('ERROR: osgeo module was not found')
 
@@ -164,26 +164,49 @@ class ConvertGeotiff:
                         gt = file_ds.GetGeoTransform()
                         self.pixelSizeX = gt[1]
                         self.pixelSizeY = -gt[5]
-                        self.pixel_area = gt[1] * abs(gt[5])
-                        self.pixel_num = 0
+                        
+                        print(f'-> Pixel size: {self.pixelSizeX} x {self.pixelSizeY}')
 
+                        self.pixel_area = self.pixelSizeX * abs(self.pixelSizeY)                        
+                        
                         if (self.hasAlphaChannel):
-                            BandType = gdal.GetDataTypeName(lastBand.DataType)
-                            fmttypes = {'Byte':'B', 'UInt16':'H', 'Int16':'h', 'UInt32':'I', 'Int32':'i', 'Float32':'f', 'Float64':'d'}
-                            for y in range(lastBand.YSize):
+                            # generate an ultralight version to calculate the area
+                            xsmall_version = gdal.Translate(
+                                params.tmp_folder + "\\warpTmp.vrt",
+                                file_ds,
+                                **{                         
+                                    'format': 'GTiff',
+                                    'xRes': 20,
+                                    'yRes': 20
+                                }
+                            )
                             
-                                scanline = lastBand.ReadRaster(0, y, lastBand.XSize, 1, lastBand.XSize, 1, lastBand.DataType)
-                                values = struct.unpack(fmttypes[BandType] * lastBand.XSize, scanline)
+                            xsmall_version_lastBand = xsmall_version.GetRasterBand(bands_count)
+
+                            BandType = gdal.GetDataTypeName(xsmall_version_lastBand.DataType)
+                            fmttypes = {'Byte':'B', 'UInt16':'H', 'Int16':'h', 'UInt32':'I', 'Int32':'i', 'Float32':'f', 'Float64':'d'}
+                            
+                            self.pixel_num = 0
+
+                            for y in range(xsmall_version_lastBand.YSize):
+                            
+                                scanline = xsmall_version_lastBand.ReadRaster(0, y, xsmall_version_lastBand.XSize, 1, xsmall_version_lastBand.XSize, 1, xsmall_version_lastBand.DataType)
+                                values = struct.unpack(fmttypes[BandType] * xsmall_version_lastBand.XSize, scanline)
                             
                                 for value in values:
                                     if value > 0:
                                         self.pixel_num = self.pixel_num + 1
-
+                            gt = xsmall_version.GetGeoTransform()
+                            pixelSizeX = gt[1]
+                            pixelSizeY = -gt[5]
+                            pixel_area = pixelSizeX * abs(pixelSizeY)
+                            self.area = self.pixel_num * (pixel_area / 10000)
+                            xsmall_version = None
+                            
                         else:
                             # entire geotiff area (including alpha and nodata)
-                            self.pixel_num = file_ds.RasterXSize * file_ds.RasterYSize
-                        
-                        self.area = self.pixel_num * (self.pixel_area / 10000)
+                            self.pixel_num = file_ds.RasterXSize * file_ds.RasterYSize                        
+                            self.area = self.pixel_num * (self.pixel_area / 10000)
                         
                         print('-> Area in ha:', self.area)
 

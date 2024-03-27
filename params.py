@@ -34,7 +34,7 @@ metadata = [
 ]
 
 geoserverRGB = {
-    'enabled': True,
+    'enabled': False,
     'output_folder': output_folder_geoserver + '/rgb',
     'gsd': 20, # cm
     'ha_sm_trigger': 150, # If raster is less than these ha, increase the quality of the geoserver images
@@ -42,9 +42,9 @@ geoserverRGB = {
     'overviews': True
 }
 
-# outlines are exported only in RGB images
+# outlines are exported only in RGB mode
 outlines = {
-    'enabled': True,
+    'enabled': False,
 
     # Polygons bigger than this area are preserved in the outlines
     'minimum_area': 10,  # m2
@@ -59,21 +59,21 @@ outlines = {
 }
 
 geoserverDEM = {
-    'enabled': True,
+    'enabled': False,
     'output_folder': output_folder_geoserver + '/mde',
     'overviews': True,
     'gsd': 50  # cm
 }
 
 geoserverDEMRGB = {
-    'enabled': True,
+    'enabled': False,
     'output_folder': output_folder_geoserver + '/mde_rgb',
     'overviews': True,
     'encoding': 'terrarium' # mapbox | terrarium
 }
 
 storageRGB = {
-    'enabled': True,
+    'enabled': False,
     'gsd': None,  # None to use original | cm
     'gsd_sm_trigger': 5,  # cm 
     'gsd_sm': 10,  # cm Used if the default gsd is less than gsd_limit
@@ -82,7 +82,7 @@ storageRGB = {
 }
 
 storageDEM = {
-    'enabled': True,
+    'enabled': False,
     'gsd': 20,  # cm
     'overviews': True,
     'quantities': True,

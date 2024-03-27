@@ -17,7 +17,6 @@ def exportGeoserverDEM(self, file_ds, file):
     '''
 
     kwargs = {
-        'format': 'GTiff',
         'multithread': True,
         'xRes': max(0.3, self.pixelSizeX),
         'yRes': max(0.3, self.pixelSizeY),
@@ -38,7 +37,7 @@ def exportGeoserverDEM(self, file_ds, file):
         print(
             f'-> Transforming EPSG:{self.epsg} to EPSG:{params.geoserver_epsg}')
 
-    tmpWarp = TEMP_FOLDER + "\\geoserverWarp.tif"
+    tmpWarp = TEMP_FOLDER + "\\warpTmp.vrt"
 
     # Use the warp to convert projections, change the GSD and correct the noData values
     file_ds = gdal.Warp(tmpWarp, file_ds, **kwargs)
@@ -59,6 +58,8 @@ def _exportFloat(self, file_ds, outputFilename):
     print('-> Exporting geoserver DEM in 32 bits float')
 
     gdaloutputDEM = f'{params.geoserverDEM["output_folder"]}/{outputFilename}'
+    
+    print(f'--> Exporting {gdaloutputDEM}')
 
     kwargs = {
         'format': 'GTiff',
@@ -101,6 +102,8 @@ def _exportRGB(self, tmpFile, outputFilename):
     print('-> Exporting geoserver DEM in RGB mode')
 
     gdaloutputDEMRGB = f'{params.geoserverDEMRGB["output_folder"]}/{outputFilename}'
+    
+    print(f'--> Exporting {gdaloutputDEMRGB}')
 
     with rasterio.open(tmpFile) as src:
         dem = src.read(1)
@@ -142,5 +145,5 @@ def _exportRGB(self, tmpFile, outputFilename):
         dst.write_band(3, b.astype(rasterio.uint8))
 
         if (params.geoserverDEMRGB['overviews']):
-            print('-> Adding overviews')
+            print('--> Adding overviews')
             dst.build_overviews(params.overviews, Resampling.average)
