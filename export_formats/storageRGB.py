@@ -45,7 +45,7 @@ def exportStorageRGB(self, file_ds):
         'yRes': max(params.storageRGB['gsd']/100, self.pixelSizeY) if params.storageRGB['gsd'] else self.pixelSizeY,
         'creationOptions': [
             'JPEG_QUALITY=80',
-            'BIGTIFF=NO', # If YES, Civil 3d can't open it.
+            'BIGTIFF=YES' if (((self.pixelSizeX + self.pixelSizeY) / 2) < params.storageRGB['gsd_sm_trigger']) else 'BIGTIFF=NO',
             'TFW=YES',
             'TILED=YES',
             'PHOTOMETRIC=YCBCR',
@@ -75,7 +75,12 @@ def exportStorageRGB(self, file_ds):
         kwargs_sm = {
             **kwargs,
             'creationOptions': [
-                'BIGTIFF=NO' # If YES, Civil 3d can't open it
+                'JPEG_QUALITY=80',
+                'BIGTIFF=IF_NEEDED', # If YES, Civil 3d can't open it.
+                'TFW=YES',
+                'TILED=YES',
+                'PHOTOMETRIC=YCBCR',
+                'COMPRESS=JPEG',
             ],
             'xRes': params.storageRGB['gsd_sm'] / 100,
             'yRes': params.storageRGB['gsd_sm'] / 100,

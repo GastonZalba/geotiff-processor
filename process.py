@@ -172,7 +172,7 @@ class ConvertGeotiff:
                         if (self.hasAlphaChannel):
                             # generate an ultralight version to calculate the area
                             xsmall_version = gdal.Translate(
-                                params.tmp_folder + "\\warpTmp.vrt",
+                                params.tmp_folder + "\\tmpArea.vrt",
                                 file_ds,
                                 **{                         
                                     'format': 'GTiff',
@@ -229,7 +229,8 @@ class ConvertGeotiff:
 
                         self.exportStorageFiles(file_ds)
 
-                        self.exportGeoserverFiles(file_ds, file)
+                        if ((self.isDEM and (params.geoserverDEM['enabled'] or params.geoserverDEMRGB['enabled'])) or params.geoserverRGB['enabled']):
+                            self.exportGeoserverFiles(file_ds, file)
 
                         # Once we're done, close properly the dataset
                         file_ds = None
